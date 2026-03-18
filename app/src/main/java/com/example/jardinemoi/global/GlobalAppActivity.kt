@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.jardinemoi.R
 import com.example.jardinemoi.game.GardenGameScreen
+import com.example.jardinemoi.home.HomeScreen
 import com.example.jardinemoi.ui.theme.JardineMoiTheme
 
 private enum class MainTab {
@@ -90,39 +91,12 @@ private fun GlobalAppRoot() {
                 .padding(innerPadding)
         ) {
             when (selectedTab) {
-                MainTab.HOME -> GlobalHomeContent()
+                MainTab.HOME -> HomeScreen()
                 MainTab.GAME -> GardenGameScreen()
                 MainTab.MESSAGES -> MessagesPlaceholderContent()
                 MainTab.ACCOUNT -> AccountPlaceholderContent()
             }
         }
-    }
-}
-
-@Composable
-private fun GlobalHomeContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(id = R.string.app_name),
-            style = MaterialTheme.typography.titleLarge
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(id = R.string.global_home_title),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(id = R.string.global_home_description),
-            style = MaterialTheme.typography.bodyMedium
-        )
     }
 }
 
