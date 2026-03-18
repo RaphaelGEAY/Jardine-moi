@@ -55,7 +55,11 @@ private enum class PlantType(
     val minLevel: Int
 ) {
     TOMATE("Tomate", "🍅", 10, 25, 10, 0),
+    CAROTTE("Carotte", "🥕", 15, 40, 15, 0),
+    FRAISE("Fraise", "🍓", 25, 70, 20, 1),
     TOURNESOL("Tournesol", "🌻", 40, 110, 25, 2),
+    MAIS("Maïs", "🌽", 60, 180, 30, 3),
+    PIMENT("Piment", "🌶️", 80, 250, 35, 4),
     ARBRE_MAGIQUE("Arbre d'Or", "🌳", 200, 600, 50, 5),
     VIDE("Terre", "🟫", 0, 0, 0, 0)
 }
