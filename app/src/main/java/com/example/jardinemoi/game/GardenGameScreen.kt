@@ -98,7 +98,7 @@ fun GardenGameScreen() {
         while (true) {
             delay(1000)
             ticks++
-            if (ticks % 15 == 0) currentWeather = Weather.values().random()
+            if (ticks % 15 == 0) currentWeather = Weather.entries.random()
             for (i in gardenSlots.indices) {
                 val slot = gardenSlots[i]
                 if (slot.plant != PlantType.VIDE) {
@@ -221,7 +221,7 @@ private fun ShopScreen(level: Int, currentSelected: PlantType, onSelect: (PlantT
             Spacer(Modifier.height(16.dp))
         }
 
-        items(PlantType.values().filter { it != PlantType.VIDE }) { plant ->
+        items(PlantType.entries.filter { it != PlantType.VIDE }) { plant ->
             val locked = level < plant.minLevel
             Card(
                 modifier = Modifier
