@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "712617867184",
+    "project_id": "jardinemoi-158fe",
+    "storage_bucket": "jardinemoi-158fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:712617867184:android:adb4787cadc95b09c18875",
+        "android_client_info": {
+          "package_name": "com.example.jardinemoi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmjDs1FVDZfEEHKNEuiGUVNWZxm8m45OA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

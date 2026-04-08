@@ -16,6 +16,8 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
 
     Column(
@@ -33,7 +35,8 @@ fun LoginScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(Modifier.height(16.dp))
@@ -43,30 +46,49 @@ fun LoginScreen(
             onValueChange = { password = it },
             label = { Text("Mot de passe") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = {
+                if (email.isBlank() || password.isBlank()) {
+                    errorMessage = "Veuillez remplir tous les champs"
+                    return@Button
+                }
+
+                isLoading = true
+                errorMessage = null
+
                 scope.launch {
                     AuthRepository.login(
                         email = email,
                         password = password,
                         onSuccess = {
-                            errorMessage = null
-                            onLoginSuccess()   // 🔥 redirection
+                            isLoading = false
+                            onLoginSuccess()
                         },
                         onError = { error ->
+                            isLoading = false
                             errorMessage = error
                         }
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         ) {
-            Text("Se connecter")
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Text("Se connecter")
+            }
         }
 
         errorMessage?.let {
@@ -76,7 +98,10 @@ fun LoginScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        TextButton(onClick = onBack) {
+        TextButton(
+            onClick = onBack,
+            enabled = !isLoading
+        ) {
             Text("Retour")
         }
     }

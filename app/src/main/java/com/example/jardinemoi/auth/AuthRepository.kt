@@ -1,13 +1,11 @@
 package com.example.jardinemoi.auth
 
-import com.example.jardinemoi.SupabaseManager
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.tasks.await
 
 object AuthRepository {
+
+    private val auth = FirebaseAuth.getInstance()
 
     suspend fun login(
         email: String,
@@ -16,12 +14,7 @@ object AuthRepository {
         onError: (String) -> Unit
     ) {
         try {
-            withContext(Dispatchers.IO) {
-                SupabaseManager.client.auth.signInWith(Email) {
-                    this.email = email
-                    this.password = password
-                }
-            }
+            auth.signInWithEmailAndPassword(email, password).await()
             onSuccess()
         } catch (e: Exception) {
             onError(e.message ?: "Erreur de connexion")
@@ -35,17 +28,18 @@ object AuthRepository {
         onError: (String) -> Unit
     ) {
         try {
-            withContext(Dispatchers.IO) {
-                SupabaseManager.client.auth.signUpWith(Email) {
-                    this.email = email
-                    this.password = password
-                }
-            }
+            auth.createUserWithEmailAndPassword(email, password).await()
             onSuccess()
         } catch (e: Exception) {
             onError(e.message ?: "Erreur d'inscription")
         }
     }
+
+    fun logout() {
+        auth.signOut()
+    }
+
+    fun isLoggedIn(): Boolean {
+        return auth.currentUser != null
+    }
 }
-
-

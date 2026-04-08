@@ -13,11 +13,12 @@ fun RegisterScreen(
     onBack: () -> Unit,
     onRegisterSuccess: () -> Unit
 ) {
-
     val scope = rememberCoroutineScope()
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -34,7 +35,8 @@ fun RegisterScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(Modifier.height(16.dp))
@@ -44,30 +46,54 @@ fun RegisterScreen(
             onValueChange = { password = it },
             label = { Text("Mot de passe") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = {
+                if (email.isBlank() || password.isBlank()) {
+                    errorMessage = "Veuillez remplir tous les champs"
+                    return@Button
+                }
+
+                if (password.length < 6) {
+                    errorMessage = "Le mot de passe doit contenir au moins 6 caractères"
+                    return@Button
+                }
+
+                isLoading = true
+                errorMessage = null
+
                 scope.launch {
                     AuthRepository.register(
                         email = email,
                         password = password,
                         onSuccess = {
-                            errorMessage = null
+                            isLoading = false
                             onRegisterSuccess()
                         },
                         onError = { error ->
+                            isLoading = false
                             errorMessage = error
                         }
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         ) {
-            Text("Créer mon compte")
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Text("Créer mon compte")
+            }
         }
 
         errorMessage?.let {
@@ -77,7 +103,10 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        TextButton(onClick = onBack) {
+        TextButton(
+            onClick = onBack,
+            enabled = !isLoading
+        ) {
             Text("Retour")
         }
     }

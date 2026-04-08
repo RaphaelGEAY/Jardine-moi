@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.Surface
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -22,10 +21,6 @@ import com.example.jardinemoi.home.HomeScreen
 import com.example.jardinemoi.auth.LoginScreen
 import com.example.jardinemoi.auth.RegisterScreen
 import com.example.jardinemoi.ui.theme.JardineMoiTheme
-
-import com.example.jardinemoi.SupabaseManager
-import io.github.jan.supabase.auth.auth
-import kotlinx.coroutines.launch
 
 private enum class MainTab {
     HOME,
@@ -39,8 +34,6 @@ class GlobalAppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        SupabaseManager.init()
-
         setContent {
             JardineMoiTheme(darkTheme = false) {
                 Surface(
@@ -49,7 +42,6 @@ class GlobalAppActivity : ComponentActivity() {
                 ) {
                     GlobalAppRoot()
                 }
-                println("SUPABASE URL = ${SupabaseManager.client.supabaseUrl}")
             }
         }
     }
@@ -57,16 +49,8 @@ class GlobalAppActivity : ComponentActivity() {
 
 @Composable
 private fun GlobalAppRoot() {
-    var selectedTab by remember { mutableStateOf(MainTab.HOME) }
     val navController = rememberNavController()
-
-
-    LaunchedEffect(Unit) {
-        SupabaseManager.client.auth.sessionStatus.collect { status ->
-            println("Auth status: $status")
-        }
-    }
-
+    var selectedTab by remember { mutableStateOf(MainTab.HOME) }
 
     Scaffold(
         bottomBar = {
@@ -75,81 +59,82 @@ private fun GlobalAppRoot() {
                     icon = { Text("🏠") },
                     label = { Text(stringResource(id = R.string.bottom_nav_home)) },
                     selected = selectedTab == MainTab.HOME,
-                    onClick = { selectedTab = MainTab.HOME }
+                    onClick = {
+                        selectedTab = MainTab.HOME
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = false }
+                        }
+                    }
                 )
                 NavigationBarItem(
                     icon = { Text("🎮") },
                     label = { Text(stringResource(id = R.string.bottom_nav_game)) },
                     selected = selectedTab == MainTab.GAME,
-                    onClick = { selectedTab = MainTab.GAME }
+                    onClick = {
+                        selectedTab = MainTab.GAME
+                        navController.navigate("game")
+                    }
                 )
                 NavigationBarItem(
                     icon = { Text("💬") },
                     label = { Text(stringResource(id = R.string.bottom_nav_messages)) },
                     selected = selectedTab == MainTab.MESSAGES,
-                    onClick = { selectedTab = MainTab.MESSAGES }
+                    onClick = {
+                        selectedTab = MainTab.MESSAGES
+                        navController.navigate("messages")
+                    }
                 )
                 NavigationBarItem(
                     icon = { Text("👤") },
                     label = { Text(stringResource(id = R.string.bottom_nav_account)) },
                     selected = selectedTab == MainTab.ACCOUNT,
-                    onClick = { selectedTab = MainTab.ACCOUNT }
+                    onClick = {
+                        selectedTab = MainTab.ACCOUNT
+                        navController.navigate("account")
+                    }
                 )
             }
         }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+
+        NavHost(
+            navController = navController,
+            startDestination = "home",
+            modifier = Modifier.padding(innerPadding)
         ) {
-            when (selectedTab) {
-                MainTab.HOME -> {
-                    NavHost(
-                        navController = navController,
-                        startDestination = "home"
-                    ) {
-                        composable("home") {
-                            HomeScreen(
-                                onLoginClick = { navController.navigate("login") },
-                                onRegisterClick = { navController.navigate("register") },
-                                onLogoutClick = {
-                                    // Handle logout if needed
-                                    navController.navigate("login") {
-                                        popUpTo(0)
-                                    }
-                                }
-                            )
-                        }
 
-
-                        composable("login") {
-                            LoginScreen(
-                                onBack = { navController.popBackStack() },
-                                onLoginSuccess = { navController.popBackStack() }
-                            )
-                        }
-
-
-                        composable("register") {
-                            RegisterScreen(
-                                onBack = { navController.popBackStack() },
-                                onRegisterSuccess = { navController.popBackStack() }
-                            )
+            composable("home") {
+                HomeScreen(
+                    onLoginClick = { navController.navigate("login") },
+                    onRegisterClick = { navController.navigate("register") },
+                    onLogoutClick = {
+                        navController.navigate("login") {
+                            popUpTo("home") { inclusive = true }
                         }
                     }
-                }
-                MainTab.GAME -> GardenGameScreen()
-                MainTab.MESSAGES -> MessagesPlaceholderContent()
-                MainTab.ACCOUNT -> AccountPlaceholderContent()
+                )
             }
+
+            composable("login") {
+                LoginScreen(
+                    onBack = { navController.popBackStack() },
+                    onLoginSuccess = { navController.navigate("home") }
+                )
+            }
+
+            composable("register") {
+                RegisterScreen(
+                    onBack = { navController.popBackStack() },
+                    onRegisterSuccess = { navController.navigate("home") }
+                )
+            }
+
+            composable("game") { GardenGameScreen() }
+            composable("messages") { MessagesPlaceholderContent() }
+            composable("account") { AccountPlaceholderContent() }
         }
     }
 }
-
-
-
-
 
 @Composable
 private fun MessagesPlaceholderContent() {
