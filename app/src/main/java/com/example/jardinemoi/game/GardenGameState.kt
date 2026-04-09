@@ -155,11 +155,11 @@ class GardenGameState {
 
     val gardenMoodLabel: String
         get() = when {
-            readyPlotsCount > 0 -> "Recolte chaude"
+            readyPlotsCount > 0 -> "Récolte chaude"
             thirstyPlotsCount > 0 -> "Besoin d'eau"
             thrivingPlotsCount >= 3 -> "Jardin luxuriant"
             growingPlotsCount > 0 -> "Croissance stable"
-            else -> "Pret a planter"
+            else -> "Prêt à planter"
         }
 
     val gardenMoodAccent = when {

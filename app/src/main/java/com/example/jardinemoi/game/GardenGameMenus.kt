@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,6 +49,7 @@ fun GardenBottomSheetPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .fillMaxHeight()
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -96,6 +98,7 @@ fun GardenBottomSheetPanel(
         }
 
         GardenSelectedMenuSheet(
+            modifier = Modifier.weight(1f),
             gameState = gameState,
             selectedMenu = selectedMenu
         )
@@ -104,6 +107,7 @@ fun GardenBottomSheetPanel(
 
 @Composable
 private fun GardenSelectedMenuSheet(
+    modifier: Modifier = Modifier,
     gameState: GardenGameState,
     selectedMenu: GardenMenuSheet
 ) {
@@ -111,10 +115,10 @@ private fun GardenSelectedMenuSheet(
     val panelColor = lerp(GardenPanel, weather.tint, 0.08f)
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .heightIn(min = 220.dp, max = 320.dp),
+            .padding(top = 4.dp)
+            .heightIn(min = 220.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = lerp(panelColor, Color.White, 0.12f)),
         border = androidx.compose.foundation.BorderStroke(

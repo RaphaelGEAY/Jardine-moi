@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -100,14 +101,18 @@ private fun GardenMergedTopBar(
     onClaimDailyBonus: () -> Unit
 ) {
     val weatherTint = gameState.currentWeather.tint
+    val levelAccent = lerp(GardenMint, weatherTint, 0.2f)
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text(
                     text = "Mon jardin",
                     color = GardenTextStrong,
@@ -115,13 +120,21 @@ private fun GardenMergedTopBar(
                     fontWeight = FontWeight.Black,
                     fontSize = if (compactLayout) 20.sp else 22.sp
                 )
-                Text(
-                    text = "Jour ${gameState.day} · ${gameState.gardenMoodLabel}",
-                    color = GardenTextSoft,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    GardenMetaPill(
+                        text = "Jour ${gameState.day}",
+                        accent = GardenPanelSoft,
+                        textColor = GardenTextSoft
+                    )
+                    GardenMetaPill(
+                        text = gameState.gardenMoodLabel,
+                        accent = lerp(gameState.gardenMoodAccent, weatherTint, 0.18f),
+                        textColor = GardenTextStrong
+                    )
+                }
             }
             Column(
                 horizontalAlignment = Alignment.End,
@@ -139,48 +152,40 @@ private fun GardenMergedTopBar(
         }
 
         FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            IconValueChip(
+            GardenSummaryCard(
+                compactLayout = compactLayout,
                 icon = "🪙",
                 label = "Or",
                 value = gameState.coins.toString(),
                 accent = GardenGold,
                 weatherTint = weatherTint
             )
-            IconValueChip(
+            GardenSummaryCard(
+                compactLayout = compactLayout,
                 icon = "💎",
                 label = "Gemmes",
                 value = gameState.gems.toString(),
                 accent = Color(0xFF8E7CC3),
                 weatherTint = weatherTint
             )
-            IconValueChip(
-                icon = "🌱",
-                label = "Graine",
+            GardenSummaryCard(
+                compactLayout = compactLayout,
+                icon = gameState.selectedSeed.emoji,
+                label = "Graine active",
                 value = gameState.selectedSeed.displayName,
                 accent = gameState.selectedSeed.accentColor,
                 weatherTint = weatherTint
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            LevelChip(level = gameState.level, accent = lerp(GardenMint, weatherTint, 0.2f))
-            LinearProgressIndicator(
-                progress = { gameState.levelProgress },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(999.dp)),
-                color = lerp(GardenMint, weatherTint, 0.2f),
-                trackColor = Color.White
-            )
-        }
+        GardenLevelProgressCard(
+            level = gameState.level,
+            progress = gameState.levelProgress,
+            accent = levelAccent
+        )
     }
 }
 
@@ -206,6 +211,130 @@ private fun WeatherMiniChip(weather: Weather) {
 }
 
 @Composable
+private fun GardenMetaPill(
+    text: String,
+    accent: Color,
+    textColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(lerp(Color.White, accent, 0.3f))
+            .border(1.dp, accent.copy(alpha = 0.26f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun GardenSummaryCard(
+    compactLayout: Boolean,
+    icon: String,
+    label: String,
+    value: String,
+    accent: Color,
+    weatherTint: Color
+) {
+    Card(
+        modifier = Modifier
+            .widthIn(min = if (compactLayout) 116.dp else 126.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = lerp(Color.White, weatherTint, 0.1f).copy(alpha = 0.96f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.24f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = icon, fontSize = 14.sp)
+                Text(
+                    text = label,
+                    color = GardenTextSoft,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = value,
+                color = GardenTextStrong,
+                fontWeight = FontWeight.Black,
+                fontSize = if (compactLayout) 14.sp else 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun GardenLevelProgressCard(
+    level: Int,
+    progress: Float,
+    accent: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = lerp(Color.White, accent, 0.12f).copy(alpha = 0.96f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.24f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LevelChip(level = level, accent = accent)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "Progression",
+                    color = GardenTextSoft,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
+                )
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp)),
+                    color = accent,
+                    trackColor = Color.White
+                )
+            }
+            Text(
+                text = "${(progress * 100).toInt()}%",
+                color = GardenTextStrong,
+                fontWeight = FontWeight.Black,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun LevelChip(
     level: Int,
     accent: Color
@@ -218,36 +347,9 @@ private fun LevelChip(
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(
-            text = "Niv $level",
+            text = "Niv. $level",
             color = GardenTextStrong,
             fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun IconValueChip(
-    icon: String,
-    label: String,
-    value: String,
-    accent: Color,
-    weatherTint: Color
-) {
-    Row(
-        modifier = Modifier
-            .background(lerp(Color.White, weatherTint, 0.12f).copy(alpha = 0.94f), RoundedCornerShape(16.dp))
-            .border(1.dp, accent.copy(alpha = 0.24f), RoundedCornerShape(16.dp))
-            .padding(horizontal = 9.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = icon, fontSize = 12.sp)
-        Text(
-            text = " $label $value",
-            color = GardenTextStrong,
-            fontWeight = FontWeight.Black,
             fontSize = 11.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
