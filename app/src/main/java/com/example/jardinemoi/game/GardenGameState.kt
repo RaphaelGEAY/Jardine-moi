@@ -252,7 +252,7 @@ class GardenGameState {
                         )
                         
                         // Si le jeu était fermé pendant un moment, on fait pousser les plantes
-                        if (elapsedSeconds > 5) {
+                        if (elapsedSeconds > 1) {
                             gardenSlots[savedSlot.id] = baseSlot.advance(currentWeather, elapsedSeconds)
                         } else {
                             gardenSlots[savedSlot.id] = baseSlot

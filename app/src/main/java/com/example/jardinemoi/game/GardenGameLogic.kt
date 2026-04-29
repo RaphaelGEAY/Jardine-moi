@@ -155,16 +155,15 @@ internal fun GardenSlot.advance(weather: Weather, elapsedSeconds: Long = 1L): Ga
     if (!isUnlocked || plant == PlantType.VIDE || isReadyToHarvest) return this
 
     // On réduit l'eau et l'engrais proportionnellement au temps passé
-    // Les valeurs d'origine étaient prévues pour 1 tick. 
-    // On va considérer que 1 tick = 5 secondes pour équilibrer la consommation d'eau.
-    val factor = elapsedSeconds / 5f
+    // On va considérer que 1 seconde réelle = 1 tick de consommation pour que ce soit cohérent
+    val factor = elapsedSeconds.toFloat()
     
     // En cas de CANICULE, l'eau s'évapore 2x plus vite
-    val baseEvaporation = 0.012f
+    val baseEvaporation = 0.002f
     val weatherModifier = if (weather == Weather.CANICULE) 2.2f else 1.0f
     
     val nextWater = (water + (weather.waterDelta - baseEvaporation * weatherModifier) * factor).coerceIn(0f, 1f)
-    val nextFertilizer = (fertilizer - 0.05f * factor).coerceAtLeast(0f)
+    val nextFertilizer = (fertilizer - 0.005f * factor).coerceAtLeast(0f)
     
     // GESTION DE LA MORT DE LA PLANTE
     var nextStarvation = starvationSeconds

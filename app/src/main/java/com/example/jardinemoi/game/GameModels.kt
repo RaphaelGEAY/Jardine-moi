@@ -21,10 +21,10 @@ enum class Weather(
     val tint: Color,
     val description: String
 ) {
-    ROSEE("Rosee", "🌤️", 0.04f, 1, Color(0xFFB7D6E2), "Une brume claire hydrate doucement les jeunes pousses."),
-    SOLEIL("Soleil", "☀️", -0.05f, 0, Color(0xFFD9C27B), "Une eclaircie perce, mais le sol seche plus vite."),
-    PLUIE("Pluie", "🌧️", 0.10f, 1, Color(0xFF5AA8C7), "Les feuilles brillent et les cultures gagnent en rythme."),
-    CANICULE("Canicule", "🔥", -0.13f, 0, Color(0xFFD4896B), "La chaleur monte et l'humidite s'echappe du jardin.")
+    ROSEE("Rosee", "🌤️", 0.005f, 1, Color(0xFFB7D6E2), "Une brume claire hydrate doucement les jeunes pousses."),
+    SOLEIL("Soleil", "☀️", -0.003f, 0, Color(0xFFD9C27B), "Une eclaircie perce, mais le sol seche plus vite."),
+    PLUIE("Pluie", "🌧️", 0.012f, 1, Color(0xFF5AA8C7), "Les feuilles brillent et les cultures gagnent en rythme."),
+    CANICULE("Canicule", "🔥", -0.008f, 0, Color(0xFFD4896B), "La chaleur monte et l'humidite s'echappe du jardin.")
 }
 
 enum class GameScreen(
