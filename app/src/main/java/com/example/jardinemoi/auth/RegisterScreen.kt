@@ -11,16 +11,17 @@ import kotlinx.coroutines.launch
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
-    onRegisterSuccess: () -> Unit,
+    onRegisterSuccess: (com.google.firebase.auth.FirebaseUser, String, String) -> Unit,
     onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    if (state.isSuccess) {
-        onRegisterSuccess()
+    LaunchedEffect(state.isSuccess) {
+        // L'effet de navigation est maintenant géré par les callbacks de register()
     }
 
     Column(
@@ -33,6 +34,15 @@ fun RegisterScreen(
         Text("Créer un compte", style = MaterialTheme.typography.headlineSmall)
 
         Spacer(Modifier.height(24.dp))
+
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Nom d'utilisateur") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(
             value = email,
@@ -54,7 +64,14 @@ fun RegisterScreen(
         Spacer(Modifier.height(24.dp))
 
         Button(
-            onClick = { viewModel.register(email, password) },
+            onClick = { 
+                viewModel.register(
+                    email = email, 
+                    password = password,
+                    onSuccess = { user -> onRegisterSuccess(user, name, email) },
+                    onError = { /* L'erreur est déjà gérée via state.error dans le ViewModel */ }
+                ) 
+            },
             modifier = Modifier.fillMaxWidth(),
             enabled = !state.isLoading
         ) {

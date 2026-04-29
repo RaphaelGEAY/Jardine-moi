@@ -26,19 +26,16 @@ import com.example.jardinemoi.auth.AuthViewModel
 import com.example.jardinemoi.auth.LoginScreen
 import com.example.jardinemoi.auth.RegisterScreen
 import com.example.jardinemoi.game.GardenGameScreen
+import com.google.firebase.firestore.FirebaseFirestore
 import com.example.jardinemoi.home.HomeScreen
+import com.example.jardinemoi.messaging.ui.ChatScreen
+import com.example.jardinemoi.messaging.ui.ConversationListScreen
+import com.example.jardinemoi.messaging.ui.NewMessageScreen
 import com.example.jardinemoi.plants.PlantDetailScreen
 import com.example.jardinemoi.plants.PlantDetailViewModel
 import com.example.jardinemoi.plants.PlantListScreen
 import com.example.jardinemoi.plants.PlantListViewModel
 import com.example.jardinemoi.ui.theme.JardineMoiTheme
-
-@Composable
-fun MessagesPlaceholderContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Messages (À venir)")
-    }
-}
 
 @Composable
 fun AccountPlaceholderContent() {
@@ -141,7 +138,25 @@ fun GlobalAppRoot() {
                 composable("register") {
                     RegisterScreen(
                         viewModel = viewModel,
-                        onRegisterSuccess = { },
+                        onRegisterSuccess = { user, name, email ->
+                            val uid = user.uid
+                            val firestore = FirebaseFirestore.getInstance()
+
+                            val userData = mapOf(
+                                "name" to name,
+                                "email" to email,
+                                "createdAt" to System.currentTimeMillis()
+                            )
+
+                            firestore.collection("users")
+                                .document(uid)
+                                .set(userData)
+                                .addOnSuccessListener {
+                                    navController.navigate("main") {
+                                        popUpTo(0)
+                                    }
+                                }
+                        },
                         onBack = { navController.popBackStack() }
                     )
                 }
@@ -162,7 +177,18 @@ fun GlobalAppRoot() {
                 }
 
                 composable("game") { GardenGameScreen() }
-                composable("messages") { MessagesPlaceholderContent() }
+                composable("messages") {
+                    ConversationListScreen(navController)
+                }
+
+                composable("chat/{conversationId}") { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("conversationId")!!
+                    ChatScreen(conversationId = id)
+                }
+
+                composable("newMessage") {
+                    NewMessageScreen(navController)
+                }
                 composable("account") { AccountPlaceholderContent() }
 
                 // 🔥 Ajouter une plante (placeholder)

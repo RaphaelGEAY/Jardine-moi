@@ -3,6 +3,7 @@ package com.example.jardinemoi.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -36,20 +37,28 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun register(email: String, password: String) {
+    fun register(email: String, password: String, onSuccess: (FirebaseUser) -> Unit, onError: (String) -> Unit) {
         _uiState.value = AuthUiState(isLoading = true)
-
-        viewModelScope.launch {
-            when (val result = AuthRepository.register(email, password)) {
-                is AuthResult.Success -> _uiState.value = AuthUiState(isSuccess = true)
-                is AuthResult.Error -> _uiState.value = AuthUiState(error = result.message)
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnSuccessListener { result ->
+                val user = result.user
+                if (user != null) {
+                    _uiState.value = AuthUiState(isSuccess = true)
+                    onSuccess(user)
+                }
             }
-        }
+            .addOnFailureListener { e ->
+                val errorMessage = e.message ?: "Erreur inconnue"
+                _uiState.value = AuthUiState(error = errorMessage)
+                onError(errorMessage)
+            }
     }
 
     fun logout() {
         auth.signOut()
     }
+
+    fun currentUser() = auth.currentUser
 
     override fun onCleared() {
         super.onCleared()
