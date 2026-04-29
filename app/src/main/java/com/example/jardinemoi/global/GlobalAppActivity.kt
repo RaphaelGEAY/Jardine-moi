@@ -6,11 +6,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -73,95 +81,135 @@ fun GlobalAppRoot() {
         }
     }
 
-    NavHost(navController = navController, startDestination = "auth") {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
 
-        // -------------------------
-        // AUTH GRAPH
-        // -------------------------
-        navigation(startDestination = "login", route = "auth") {
+    // Liste des destinations principales pour la barre de navigation
+    val items = listOf(
+        Triple("home", "Accueil", Icons.Default.Home),
+        Triple("game", "Jeu", Icons.Default.VideogameAsset),
+        Triple("messages", "Messages", Icons.AutoMirrored.Filled.Chat),
+        Triple("account", "Compte", Icons.Default.Person),
+    )
 
-            composable("login") {
-                LoginScreen(
-                    viewModel = viewModel,
-                    onLoginSuccess = { },
-                    onRegisterClick = { navController.navigate("register") },
-                    onBack = { navController.popBackStack() }
-                )
-            }
-
-            composable("register") {
-                RegisterScreen(
-                    viewModel = viewModel,
-                    onRegisterSuccess = { },
-                    onBack = { navController.popBackStack() }
-                )
+    Scaffold(
+        bottomBar = {
+            // On n'affiche la barre que si on est dans le graphe "main" (utilisateur connecté)
+            if (isAuthenticated && currentDestination?.hierarchy?.any { it.route == "main" || it.route == "home" || it.route == "game" || it.route == "messages" || it.route == "account" } == true) {
+                NavigationBar {
+                    items.forEach { (route, label, icon) ->
+                        NavigationBarItem(
+                            icon = { Icon(icon, contentDescription = label) },
+                            label = { Text(label) },
+                            selected = currentDestination.hierarchy.any { it.route == route },
+                            onClick = {
+                                navController.navigate(route) {
+                                    // Évite d'empiler les pages
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = "auth",
+            modifier = Modifier.padding(innerPadding)
+        ) {
 
-        // -------------------------
-        // MAIN GRAPH
-        // -------------------------
-        navigation(startDestination = "home", route = "main") {
+            // -------------------------
+            // AUTH GRAPH
+            // -------------------------
+            navigation(startDestination = "login", route = "auth") {
 
-            composable("home") {
-                HomeScreen(
-                    viewModel = viewModel,
-                    onAddPlant = { navController.navigate("addPlant") },
-                    onViewPlants = { navController.navigate("plants") },
-                    onLogout = { viewModel.logout() }
-                )
-            }
-
-            composable("game") { GardenGameScreen() }
-            composable("messages") { MessagesPlaceholderContent() }
-            composable("account") { AccountPlaceholderContent() }
-
-            // 🔥 Ajouter une plante (placeholder)
-            composable("addPlant") {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Ajouter une plante (à venir)")
-                }
-            }
-
-            // 🌿 Liste des plantes
-            composable("plants") {
-                val plantListViewModel: PlantListViewModel = viewModel()
-                PlantListScreen(
-                    viewModel = plantListViewModel,
-                    onPlantClick = { plant ->
-                        navController.navigate("plantDetail/${plant.id}")
-                    }
-                )
-            }
-
-            // 🌱 Détails d’une plante — VERSION FINALE
-            composable(
-                route = "plantDetail/{plantId}",
-                arguments = listOf(navArgument("plantId") { type = NavType.StringType })
-            ) { backStackEntry ->
-
-                val plantId = backStackEntry.arguments?.getString("plantId")!!
-                val detailViewModel: PlantDetailViewModel = viewModel()
-
-                // Charger la plante depuis Firestore
-                LaunchedEffect(plantId) {
-                    detailViewModel.loadPlant(plantId)
-                }
-
-                val plant by detailViewModel.plant.collectAsState()
-
-                if (plant != null) {
-                    PlantDetailScreen(
-                        plant = plant!!,
-                        onAddToMyPlants = { /* TODO */ }
+                composable("login") {
+                    LoginScreen(
+                        viewModel = viewModel,
+                        onLoginSuccess = { },
+                        onRegisterClick = { navController.navigate("register") },
+                        onBack = { navController.popBackStack() }
                     )
-                } else {
+                }
+
+                composable("register") {
+                    RegisterScreen(
+                        viewModel = viewModel,
+                        onRegisterSuccess = { },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            // -------------------------
+            // MAIN GRAPH
+            // -------------------------
+            navigation(startDestination = "home", route = "main") {
+
+                composable("home") {
+                    HomeScreen(
+                        viewModel = viewModel,
+                        onAddPlant = { navController.navigate("addPlant") },
+                        onViewPlants = { navController.navigate("plants") },
+                        onLogout = { viewModel.logout() }
+                    )
+                }
+
+                composable("game") { GardenGameScreen() }
+                composable("messages") { MessagesPlaceholderContent() }
+                composable("account") { AccountPlaceholderContent() }
+
+                // 🔥 Ajouter une plante (placeholder)
+                composable("addPlant") {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Chargement…")
+                        Text("Ajouter une plante (à venir)")
+                    }
+                }
+
+                // 🌿 Liste des plantes
+                composable("plants") {
+                    val plantListViewModel: PlantListViewModel = viewModel()
+                    PlantListScreen(
+                        viewModel = plantListViewModel,
+                        onPlantClick = { plant ->
+                            navController.navigate("plantDetail/${plant.id}")
+                        }
+                    )
+                }
+
+                // 🌱 Détails d’une plante
+                composable(
+                    route = "plantDetail/{plantId}",
+                    arguments = listOf(navArgument("plantId") { type = NavType.StringType })
+                ) { backStackEntry ->
+
+                    val plantId = backStackEntry.arguments?.getString("plantId")!!
+                    val detailViewModel: PlantDetailViewModel = viewModel()
+
+                    LaunchedEffect(plantId) {
+                        detailViewModel.loadPlant(plantId)
+                    }
+
+                    val plant by detailViewModel.plant.collectAsState()
+
+                    if (plant != null) {
+                        PlantDetailScreen(
+                            plant = plant!!,
+                            onAddToMyPlants = { /* TODO */ }
+                        )
+                    } else {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Chargement…")
+                        }
                     }
                 }
             }
         }
     }
 }
-
