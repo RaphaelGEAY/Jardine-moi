@@ -29,46 +29,17 @@ import com.example.jardinemoi.auth.LoginScreen
 import com.example.jardinemoi.auth.RegisterScreen
 import com.example.jardinemoi.game.GardenGameScreen
 import com.example.jardinemoi.game.rememberGardenGameState
+import com.google.firebase.firestore.FirebaseFirestore
 import com.example.jardinemoi.home.HomeScreen
+import com.example.jardinemoi.messaging.ui.ChatScreen
+import com.example.jardinemoi.messaging.ui.ConversationListScreen
+import com.example.jardinemoi.messaging.ui.NewMessageScreen
 import com.example.jardinemoi.plants.PlantDetailScreen
 import com.example.jardinemoi.plants.PlantDetailViewModel
 import com.example.jardinemoi.plants.PlantListScreen
 import com.example.jardinemoi.plants.PlantListViewModel
 import com.example.jardinemoi.ui.theme.JardineMoiTheme
 
-@Composable
-fun MessagesPlaceholderContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.Chat,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Vos messages",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Retrouvez ici vos discussions avec les autres jardiniers.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = { /* TODO */ }) {
-            Text("Nouvelle discussion")
-        }
-    }
-}
 
 class GlobalAppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -165,7 +136,25 @@ fun GlobalAppRoot() {
                 composable("register") {
                     RegisterScreen(
                         viewModel = viewModel,
-                        onRegisterSuccess = { },
+                        onRegisterSuccess = { user, name, email ->
+                            val uid = user.uid
+                            val firestore = FirebaseFirestore.getInstance()
+
+                            val userData = mapOf(
+                                "name" to name,
+                                "email" to email,
+                                "createdAt" to System.currentTimeMillis()
+                            )
+
+                            firestore.collection("users")
+                                .document(uid)
+                                .set(userData)
+                                .addOnSuccessListener {
+                                    navController.navigate("main") {
+                                        popUpTo(0)
+                                    }
+                                }
+                        },
                         onBack = { navController.popBackStack() }
                     )
                 }
@@ -185,7 +174,19 @@ fun GlobalAppRoot() {
                 }
 
                 composable("game") { GardenGameScreen(gameState = gardenGameState) }
-                composable("messages") { MessagesPlaceholderContent() }
+                composable("messages") {
+                    ConversationListScreen(navController)
+                }
+
+                composable("chat/{conversationId}") { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("conversationId")!!
+                    ChatScreen(conversationId = id)
+                }
+
+                composable("newMessage") {
+                    NewMessageScreen(navController)
+                }
+
                 composable("account") {
                     AccountScreen(
                         viewModel = viewModel,
