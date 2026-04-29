@@ -10,15 +10,19 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LoginScreen(
-    onBack: () -> Unit,
-    onLoginSuccess: () -> Unit
+    viewModel: AuthViewModel,
+    onLoginSuccess: () -> Unit,
+    onRegisterClick: () -> Unit,
+    onBack: () -> Unit
 ) {
+    val state by viewModel.uiState.collectAsState()
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
+    if (state.isSuccess) {
+        onLoginSuccess()
+    }
 
     Column(
         modifier = Modifier
@@ -35,8 +39,7 @@ fun LoginScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(Modifier.height(16.dp))
@@ -46,63 +49,30 @@ fun LoginScreen(
             onValueChange = { password = it },
             label = { Text("Mot de passe") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(Modifier.height(24.dp))
 
         Button(
-            onClick = {
-                if (email.isBlank() || password.isBlank()) {
-                    errorMessage = "Veuillez remplir tous les champs"
-                    return@Button
-                }
-
-                isLoading = true
-                errorMessage = null
-
-                scope.launch {
-                    AuthRepository.login(
-                        email = email,
-                        password = password,
-                        onSuccess = {
-                            isLoading = false
-                            onLoginSuccess()
-                        },
-                        onError = { error ->
-                            isLoading = false
-                            errorMessage = error
-                        }
-                    )
-                }
-            },
+            onClick = { viewModel.login(email, password) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
+            enabled = !state.isLoading
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(20.dp)
-                )
-            } else {
-                Text("Se connecter")
-            }
+            if (state.isLoading) CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(20.dp)
+            )
+            else Text("Se connecter")
         }
 
-        errorMessage?.let {
+        state.error?.let {
             Spacer(Modifier.height(16.dp))
             Text(it, color = MaterialTheme.colorScheme.error)
         }
 
         Spacer(Modifier.height(16.dp))
 
-        TextButton(
-            onClick = onBack,
-            enabled = !isLoading
-        ) {
-            Text("Retour")
-        }
+        TextButton(onClick = onRegisterClick) { Text("Pas encore de compte ? S'inscrire") }
     }
 }

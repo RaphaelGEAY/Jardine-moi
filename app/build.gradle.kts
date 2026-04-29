@@ -22,7 +22,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -55,6 +55,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.material)
     testImplementation(libs.junit)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.common)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -64,6 +68,12 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.common)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.coil.compose)
+    implementation("androidx.compose.material:material-icons-extended")
 }
 
 

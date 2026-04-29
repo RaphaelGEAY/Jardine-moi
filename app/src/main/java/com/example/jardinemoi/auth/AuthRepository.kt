@@ -3,35 +3,30 @@ package com.example.jardinemoi.auth
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.tasks.await
 
+sealed class AuthResult {
+    object Success : AuthResult()
+    data class Error(val message: String) : AuthResult()
+}
+
 object AuthRepository {
 
     private val auth = FirebaseAuth.getInstance()
 
-    suspend fun login(
-        email: String,
-        password: String,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
-        try {
+    suspend fun login(email: String, password: String): AuthResult {
+        return try {
             auth.signInWithEmailAndPassword(email, password).await()
-            onSuccess()
+            AuthResult.Success
         } catch (e: Exception) {
-            onError(e.message ?: "Erreur de connexion")
+            AuthResult.Error(e.message ?: "Erreur de connexion")
         }
     }
 
-    suspend fun register(
-        email: String,
-        password: String,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
-        try {
+    suspend fun register(email: String, password: String): AuthResult {
+        return try {
             auth.createUserWithEmailAndPassword(email, password).await()
-            onSuccess()
+            AuthResult.Success
         } catch (e: Exception) {
-            onError(e.message ?: "Erreur d'inscription")
+            AuthResult.Error(e.message ?: "Erreur d'inscription")
         }
     }
 
@@ -39,7 +34,7 @@ object AuthRepository {
         auth.signOut()
     }
 
-    fun isLoggedIn(): Boolean {
-        return auth.currentUser != null
-    }
+    fun currentUser() = auth.currentUser
+
+    fun isLoggedIn() = auth.currentUser != null
 }
