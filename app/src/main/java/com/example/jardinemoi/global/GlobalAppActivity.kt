@@ -22,6 +22,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.example.jardinemoi.account.AccountScreen
 import com.example.jardinemoi.auth.AuthViewModel
 import com.example.jardinemoi.auth.LoginScreen
 import com.example.jardinemoi.auth.RegisterScreen
@@ -156,14 +157,18 @@ fun GlobalAppRoot() {
                     HomeScreen(
                         viewModel = viewModel,
                         onAddPlant = { navController.navigate("addPlant") },
-                        onViewPlants = { navController.navigate("plants") },
-                        onLogout = { viewModel.logout() }
+                        onViewPlants = { navController.navigate("plants") }
                     )
                 }
 
                 composable("game") { GardenGameScreen() }
                 composable("messages") { MessagesPlaceholderContent() }
-                composable("account") { AccountPlaceholderContent() }
+            composable("account") {
+                AccountScreen(
+                    viewModel = viewModel,
+                    onLogout = { viewModel.logout() }
+                )
+            }
 
                 // 🔥 Ajouter une plante (placeholder)
                 composable("addPlant") {

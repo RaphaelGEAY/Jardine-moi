@@ -13,8 +13,7 @@ import com.example.jardinemoi.auth.AuthViewModel
 fun HomeScreen(
     viewModel: AuthViewModel,
     onAddPlant: () -> Unit,
-    onViewPlants: () -> Unit,
-    onLogout: () -> Unit
+    onViewPlants: () -> Unit
 ) {
     val user = AuthRepository.currentUser()
 
@@ -70,18 +69,6 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Voir mes plantes")
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        // --- LOGOUT ---
-        TextButton(
-            onClick = {
-                viewModel.logout()
-                onLogout()
-            }
-        ) {
-            Text("Se déconnecter")
         }
     }
 }
