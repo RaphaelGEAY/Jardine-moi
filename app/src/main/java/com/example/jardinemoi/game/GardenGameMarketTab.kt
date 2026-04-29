@@ -167,7 +167,7 @@ private fun SeedMarketCard(gameState: GardenGameState, plant: PlantType) {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Croissance ${plant.growthSteps}s · Rendement ${plant.yieldRange.first}-${plant.yieldRange.last}",
+                    text = "Croissance ${formatDuration(plant.growthSeconds)} · Rendement ${plant.yieldRange.first}-${plant.yieldRange.last}",
                     color = GardenTextStrong,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp

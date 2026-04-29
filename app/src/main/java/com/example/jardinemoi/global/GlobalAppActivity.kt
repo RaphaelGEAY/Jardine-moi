@@ -4,9 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Home
@@ -16,6 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -27,6 +28,7 @@ import com.example.jardinemoi.auth.AuthViewModel
 import com.example.jardinemoi.auth.LoginScreen
 import com.example.jardinemoi.auth.RegisterScreen
 import com.example.jardinemoi.game.GardenGameScreen
+import com.example.jardinemoi.game.rememberGardenGameState
 import com.example.jardinemoi.home.HomeScreen
 import com.example.jardinemoi.plants.PlantDetailScreen
 import com.example.jardinemoi.plants.PlantDetailViewModel
@@ -36,15 +38,35 @@ import com.example.jardinemoi.ui.theme.JardineMoiTheme
 
 @Composable
 fun MessagesPlaceholderContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Messages (À venir)")
-    }
-}
-
-@Composable
-fun AccountPlaceholderContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Mon Compte (À venir)")
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Chat,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Vos messages",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Retrouvez ici vos discussions avec les autres jardiniers.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = { /* TODO */ }) {
+            Text("Nouvelle discussion")
+        }
     }
 }
 
@@ -65,6 +87,7 @@ class GlobalAppActivity : ComponentActivity() {
 fun GlobalAppRoot() {
     val navController = rememberNavController()
     val viewModel: AuthViewModel = viewModel()
+    val gardenGameState = rememberGardenGameState()
 
     // 🔥 Navigation pilotée par Firebase
     val isAuthenticated by viewModel.isAuthenticated.collectAsState()
@@ -161,14 +184,15 @@ fun GlobalAppRoot() {
                     )
                 }
 
-                composable("game") { GardenGameScreen() }
+                composable("game") { GardenGameScreen(gameState = gardenGameState) }
                 composable("messages") { MessagesPlaceholderContent() }
-            composable("account") {
-                AccountScreen(
-                    viewModel = viewModel,
-                    onLogout = { viewModel.logout() }
-                )
-            }
+                composable("account") {
+                    AccountScreen(
+                        viewModel = viewModel,
+                        gameState = gardenGameState,
+                        onLogout = { viewModel.logout() }
+                    )
+                }
 
                 // 🔥 Ajouter une plante (placeholder)
                 composable("addPlant") {

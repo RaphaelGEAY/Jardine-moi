@@ -19,8 +19,7 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GardenGameScreen() {
-    val gameState = rememberGardenGameState()
+fun GardenGameScreen(gameState: GardenGameState = rememberGardenGameState()) {
     var selectedMenu by remember { mutableStateOf(GardenMenuSheet.SEEDS) }
 
     LaunchedEffect(gameState) {
@@ -33,7 +32,7 @@ fun GardenGameScreen() {
     BottomSheetScaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(GardenPanelSoft)
+            .background(androidx.compose.ui.graphics.lerp(GardenPanelSoft, gameState.currentWeather.tint, 0.15f))
             .statusBarsPadding(),
         sheetPeekHeight = 92.dp,
         sheetContainerColor = androidx.compose.ui.graphics.lerp(GardenPanel, gameState.currentWeather.tint, 0.08f),
@@ -58,7 +57,8 @@ fun GardenGameScreen() {
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             gameState = gameState,
             onClaimDailyBonus = gameState::claimDailyBonus,
-            onSlotClick = gameState::onGardenSlotClick
+            onSlotClick = gameState::onGardenSlotClick,
+            onSlotLongClick = gameState::removePlant
         )
     }
 }

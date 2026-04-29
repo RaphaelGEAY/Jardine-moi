@@ -154,9 +154,10 @@ data class GardenSlot(
     val id: Int,
     val isUnlocked: Boolean,
     val plant: PlantType = PlantType.VIDE,
-    val progress: Int = 0,
+    val progress: Long = 0,
     val water: Float = 0.72f,
-    val fertilizer: Float = 0f
+    val fertilizer: Float = 0f,
+    val starvationSeconds: Long = 0L
 )
 
 enum class PlantType(
@@ -164,7 +165,7 @@ enum class PlantType(
     val emoji: String,
     val buyPrice: Int,
     val harvestCoins: Int,
-    val growthSteps: Int,
+    val growthSeconds: Long,
     val minLevel: Int,
     val rarity: CropRarity,
     val accentColor: Color,
@@ -176,147 +177,53 @@ enum class PlantType(
     val waterNeed: Float
 ) {
     TOMATE(
-        "Tomate",
-        "🍅",
-        18,
-        28,
-        8,
-        1,
-        CropRarity.COMMUNE,
-        Color(0xFFE65C4F),
-        Color(0xFFFFE1DC),
-        2..3,
-        Weather.SOLEIL,
-        "Une valeur sure pour lancer un jardin qui tourne vite.",
-        "Potager",
-        0.25f
+        "Tomate", "🍅", 18, 28, 180, // 3 minutes
+        1, CropRarity.COMMUNE, Color(0xFFE65C4F), Color(0xFFFFE1DC), 2..3, Weather.SOLEIL,
+        "Une valeur sure pour lancer un jardin qui tourne vite.", "Potager", 0.25f
     ),
     CAROTTE(
-        "Carotte",
-        "🥕",
-        22,
-        34,
-        9,
-        1,
-        CropRarity.COMMUNE,
-        Color(0xFFFF8A3D),
-        Color(0xFFFFE7D2),
-        2..4,
-        Weather.ROSEE,
-        "Sol souple, pousse stable, parfaite pour les premieres commandes.",
-        "Racine",
-        0.23f
+        "Carotte", "🥕", 22, 34, 600, // 10 minutes
+        1, CropRarity.COMMUNE, Color(0xFFFF8A3D), Color(0xFFFFE7D2), 2..4, Weather.ROSEE,
+        "Sol souple, pousse stable, parfaite pour les premieres commandes.", "Racine", 0.23f
     ),
     FRAISE(
-        "Fraise",
-        "🍓",
-        30,
-        45,
-        10,
-        2,
-        CropRarity.RARE,
-        Color(0xFFE84F7A),
-        Color(0xFFFFE1EC),
-        3..4,
-        Weather.ROSEE,
-        "Petit fruit premium, adore les matins lumineux et humides.",
-        "Fruit",
-        0.28f
+        "Fraise", "🍓", 30, 45, 1800, // 30 minutes
+        2, CropRarity.RARE, Color(0xFFE84F7A), Color(0xFFFFE1EC), 3..4, Weather.ROSEE,
+        "Petit fruit premium, adore les matins lumineux et humides.", "Fruit", 0.28f
     ),
     LAVANDE(
-        "Lavande",
-        "🪻",
-        36,
-        52,
-        11,
-        2,
-        CropRarity.RARE,
-        Color(0xFF8E7CC3),
-        Color(0xFFF0E7FF),
-        2..3,
-        Weather.SOLEIL,
-        "Une touche parfumee qui donne tout de suite du charme au jardin.",
-        "Fleur",
-        0.24f
+        "Lavande", "🪻", 36, 52, 3600, // 1 heure
+        2, CropRarity.RARE, Color(0xFF8E7CC3), Color(0xFFF0E7FF), 2..3, Weather.SOLEIL,
+        "Une touche parfumee qui donne tout de suite du charme au jardin.", "Fleur", 0.24f
     ),
     TOURNESOL(
-        "Tournesol",
-        "🌻",
-        48,
-        72,
-        12,
-        3,
-        CropRarity.RARE,
-        Color(0xFFF2C94C),
-        Color(0xFFFFF3C4),
-        3..5,
-        Weather.SOLEIL,
-        "Grand, lisible, solaire: il rend le jardin instantanement plus vivant.",
-        "Fleur",
-        0.30f
+        "Tournesol", "🌻", 48, 72, 14400, // 4 heures
+        3, CropRarity.RARE, Color(0xFFF2C94C), Color(0xFFFFF3C4), 3..5, Weather.SOLEIL,
+        "Grand, lisible, solaire: il rend le jardin instantanement plus vivant.", "Fleur", 0.30f
     ),
     MAIS(
-        "Mais doux",
-        "🌽",
-        62,
-        90,
-        13,
-        4,
-        CropRarity.EPIC,
-        Color(0xFFE6B93C),
-        Color(0xFFFFF4CC),
-        4..6,
-        Weather.PLUIE,
-        "Fait monter la valeur des commandes en un rien de temps.",
-        "Recolte",
-        0.34f
+        "Mais doux", "🌽", 62, 90, 43200, // 12 heures
+        4, CropRarity.EPIC, Color(0xFFE6B93C), Color(0xFFFFF4CC), 4..6, Weather.PLUIE,
+        "Fait monter la valeur des commandes en un rien de temps.", "Recolte", 0.34f
     ),
     PIMENT(
-        "Piment rubis",
-        "🌶️",
-        78,
-        118,
-        14,
-        5,
-        CropRarity.EPIC,
-        Color(0xFFD84315),
-        Color(0xFFFFE1D6),
-        4..6,
-        Weather.CANICULE,
-        "Plus de caractere, plus de tension, plus de recompense.",
-        "Epicure",
-        0.32f
+        "Piment rubis", "🌶️", 78, 118, 86400, // 24 heures
+        5, CropRarity.EPIC, Color(0xFFD84315), Color(0xFFFFE1D6), 4..6, Weather.CANICULE,
+        "Plus de caractere, plus de tension, plus de recompense.", "Epicure", 0.32f
     ),
     CITROUILLE(
-        "Citrouille lune",
-        "🎃",
-        96,
-        150,
-        16,
-        6,
-        CropRarity.LEGENDAIRE,
-        Color(0xFFFF7043),
-        Color(0xFFFFE8DD),
-        5..7,
-        Weather.ROSEE,
-        "Une piece maitresse qui transforme chaque recolte en evenement.",
-        "Legendaire",
-        0.36f
+        "Citrouille lune", "🎃", 96, 150, 172800, // 48 heures (2 jours)
+        6, CropRarity.LEGENDAIRE, Color(0xFFFF7043), Color(0xFFFFE8DD), 5..7, Weather.ROSEE,
+        "Une piece maitresse qui transforme chaque recolte en evenement.", "Legendaire", 0.36f
+    ),
+    GALACTIC_ARBUS(
+        "Galactic Arbus", "🌌", 999999, 0, 94608000000000000L,
+        10, CropRarity.LEGENDAIRE, Color(0xFF6200EE), Color(0xFFBB86FC), 1..1, Weather.SOLEIL,
+        "Une entite vegetale venue des confins de l'espace. Elle prend son temps.", "Cosmique", 0.01f
     ),
     VIDE(
-        "Terre",
-        "🟫",
-        0,
-        0,
-        0,
-        1,
-        CropRarity.COMMUNE,
-        Color(0xFFA1887F),
-        Color(0xFFE5D3C7),
-        0..0,
-        Weather.SOLEIL,
-        "Une parcelle prete a accueillir une nouvelle idee.",
-        "Base",
-        0f
+        "Terre", "🟫", 0, 0, 0,
+        1, CropRarity.COMMUNE, Color(0xFFA1887F), Color(0xFFE5D3C7), 0..0, Weather.SOLEIL,
+        "Une parcelle prete a accueillir une nouvelle idee.", "Base", 0f
     )
 }

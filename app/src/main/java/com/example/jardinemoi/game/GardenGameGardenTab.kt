@@ -3,6 +3,7 @@ package com.example.jardinemoi.game
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -27,7 +28,8 @@ fun GardenBoardPanel(
     modifier: Modifier = Modifier,
     gameState: GardenGameState,
     onClaimDailyBonus: () -> Unit,
-    onSlotClick: (Int) -> Unit
+    onSlotClick: (Int) -> Unit,
+    onSlotLongClick: (Int) -> Unit
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val columnCount = if (maxWidth < 520.dp) 2 else 3
@@ -58,7 +60,8 @@ fun GardenBoardPanel(
                 items(gameState.gardenSlots.size) { index ->
                     GardenPlotTile(
                         slot = gameState.gardenSlots[index],
-                        onClick = { onSlotClick(index) }
+                        onClick = { onSlotClick(index) },
+                        onLongClick = { onSlotLongClick(index) }
                     )
                 }
             }
@@ -149,7 +152,8 @@ private fun ResourcePill(icon: String, value: String, color: Color, modifier: Mo
 @Composable
 private fun GardenPlotTile(
     slot: GardenSlot,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val visual = gardenPlotVisual(slot)
     
@@ -163,7 +167,10 @@ private fun GardenPlotTile(
             .shadow(elevation, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
             .background(Brush.verticalGradient(visual.colors))
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .border(
                 2.dp, 
                 if (slot.isReadyToHarvest) GardenGold else visual.accent.copy(alpha = borderAlpha), 
@@ -192,10 +199,8 @@ private fun GardenPlotTile(
             // Barres de progression stylisées
             if (slot.plant != PlantType.VIDE && slot.isUnlocked) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    PlotProgressBar(progress = slot.progress.toFloat() / slot.plant.growthSteps, accent = slot.plant.accentColor)
-                    if (slot.isThirsty) {
-                         PlotProgressBar(progress = slot.water, accent = GardenWater)
-                    }
+                    PlotProgressBar(progress = slot.progress.toFloat() / slot.plant.growthSeconds, accent = slot.plant.accentColor)
+                    PlotProgressBar(progress = slot.water, accent = GardenWater)
                 }
             } else if (!slot.isUnlocked) {
                 Text("Débloquer", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = GardenTextSoft)

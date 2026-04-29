@@ -11,10 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.jardinemoi.auth.AuthRepository
 import com.example.jardinemoi.auth.AuthViewModel
+import com.example.jardinemoi.game.GardenGameState
 
 @Composable
 fun AccountScreen(
     viewModel: AuthViewModel,
+    gameState: GardenGameState? = null,
     onLogout: () -> Unit
 ) {
     val user = AuthRepository.currentUser()
@@ -50,6 +52,36 @@ fun AccountScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // --- ACTIONS ---
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Synchronisation Cloud",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Vos données sont automatiquement sauvegardées, mais vous pouvez forcer une synchronisation manuelle.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = { gameState?.manualSave() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = gameState != null
+                ) {
+                    Text("Synchroniser maintenant")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {

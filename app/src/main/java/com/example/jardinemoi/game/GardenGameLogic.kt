@@ -97,6 +97,27 @@ internal val QuestCatalog = listOf(
     )
 )
 
+internal fun formatDuration(seconds: Long): String {
+    if (seconds >= 94608000000000000L) return "3 milliards d'années"
+    if (seconds >= 31536000) {
+        val years = seconds / 31536000
+        return if (years == 1L) "1 an" else "$years ans"
+    }
+    if (seconds >= 86400) {
+        val days = seconds / 86400
+        return if (days == 1L) "1 jour" else "$days jours"
+    }
+    if (seconds >= 3600) {
+        val hours = seconds / 3600
+        return if (hours == 1L) "1 heure" else "$hours heures"
+    }
+    if (seconds >= 60) {
+        val minutes = seconds / 60
+        return if (minutes == 1L) "1 minute" else "$minutes minutes"
+    }
+    return "${seconds}s"
+}
+
 internal fun createInitialGardenSlots(): List<GardenSlot> =
     List(MAX_GARDEN_SLOTS) { index ->
         GardenSlot(id = index, isUnlocked = index < INITIAL_UNLOCKED_SLOTS)
@@ -130,38 +151,67 @@ internal fun orderRewardMultiplier(level: Int): Float = 1f + (level * 0.15f)
 
 internal fun dailyCompostIncome(level: Int): Int = 1 + (level / 2)
 
-internal fun GardenSlot.advance(weather: Weather): GardenSlot {
+internal fun GardenSlot.advance(weather: Weather, elapsedSeconds: Long = 1L): GardenSlot {
     if (!isUnlocked || plant == PlantType.VIDE || isReadyToHarvest) return this
 
-    val nextWater = (water + weather.waterDelta - 0.01f).coerceIn(0f, 1f)
-    val nextFertilizer = (fertilizer - 0.08f).coerceAtLeast(0f)
+    // On réduit l'eau et l'engrais proportionnellement au temps passé
+    // Les valeurs d'origine étaient prévues pour 1 tick. 
+    // On va considérer que 1 tick = 5 secondes pour équilibrer la consommation d'eau.
+    val factor = elapsedSeconds / 5f
+    
+    // En cas de CANICULE, l'eau s'évapore 2x plus vite
+    val baseEvaporation = 0.012f
+    val weatherModifier = if (weather == Weather.CANICULE) 2.2f else 1.0f
+    
+    val nextWater = (water + (weather.waterDelta - baseEvaporation * weatherModifier) * factor).coerceIn(0f, 1f)
+    val nextFertilizer = (fertilizer - 0.05f * factor).coerceAtLeast(0f)
+    
+    // GESTION DE LA MORT DE LA PLANTE
+    var nextStarvation = starvationSeconds
+    if (nextWater <= 0f) {
+        nextStarvation += elapsedSeconds
+    } else {
+        nextStarvation = 0L
+    }
+
+    // Si la plante n'a plus d'eau depuis 30 secondes, elle meurt
+    if (nextStarvation >= 30) {
+        return clearToSoil()
+    }
+
     val hydrated = nextWater >= plant.waterNeed
-    val fertilizerBoost = if (nextFertilizer >= 0.22f) 1 else 0
-    val weatherAffinityBonus = if (plant.preferredWeather == weather) 1 else 0
-    val growthDelta = if (hydrated) 1 + weather.growthBoost + fertilizerBoost + weatherAffinityBonus else 0
-    val nextProgress = (progress + growthDelta).coerceAtMost(plant.growthSteps)
+    val fertilizerBoost = if (nextFertilizer >= 0.20f) 0.5f else 0f
+    val weatherAffinityBonus = if (plant.preferredWeather == weather) 0.3f else 0f
+    
+    // Vitesse de base : 1 seconde de croissance par seconde réelle
+    // Les bonus augmentent cette vitesse
+    val growthSpeed = if (hydrated) 1f + weather.growthBoost * 0.2f + fertilizerBoost + weatherAffinityBonus else 0f
+    val growthAmount = (elapsedSeconds * growthSpeed).toLong()
+    
+    val nextProgress = (progress + growthAmount).coerceAtMost(plant.growthSeconds)
 
     return copy(
         progress = nextProgress,
         water = nextWater,
-        fertilizer = nextFertilizer
+        fertilizer = nextFertilizer,
+        starvationSeconds = nextStarvation
     )
 }
 
 internal fun GardenSlot.plantSeed(seed: PlantType): GardenSlot =
-    copy(plant = seed, progress = 0, water = 0.74f, fertilizer = 0f)
+    copy(plant = seed, progress = 0, water = 0.74f, fertilizer = 0f, starvationSeconds = 0L)
 
 internal fun GardenSlot.waterPlant(power: Float): GardenSlot =
-    copy(water = (water + power).coerceAtMost(1f))
+    copy(water = (water + power).coerceAtMost(1f), starvationSeconds = 0L)
 
 internal fun GardenSlot.applyCompost(power: Float): GardenSlot =
     copy(fertilizer = (fertilizer + power).coerceAtMost(1f))
 
 internal fun GardenSlot.clearToSoil(): GardenSlot =
-    copy(plant = PlantType.VIDE, progress = 0, water = 0.7f, fertilizer = 0f)
+    copy(plant = PlantType.VIDE, progress = 0, water = 0.7f, fertilizer = 0f, starvationSeconds = 0L)
 
 internal val GardenSlot.isReadyToHarvest: Boolean
-    get() = plant != PlantType.VIDE && progress >= plant.growthSteps
+    get() = plant != PlantType.VIDE && progress >= plant.growthSeconds
 
 internal val GardenSlot.isGrowing: Boolean
     get() = plant != PlantType.VIDE && !isReadyToHarvest

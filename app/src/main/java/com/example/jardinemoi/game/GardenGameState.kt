@@ -10,8 +10,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
+import android.util.Log
+import androidx.compose.runtime.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 @Composable
-fun rememberGardenGameState(): GardenGameState = remember { GardenGameState() }
+fun rememberGardenGameState(): GardenGameState {
+    val state = remember { GardenGameState() }
+    
+    // Charger les données au premier lancement
+    LaunchedEffect(Unit) {
+        state.loadFromFirebase()
+    }
+    
+    return state
+}
 
 @Stable
 class GardenGameState {
@@ -190,18 +205,108 @@ class GardenGameState {
             )
         }
 
+    private val scope = CoroutineScope(Dispatchers.Main)
+    private var isInitializationComplete by mutableStateOf(false)
+
+    private fun triggerSave() {
+        if (!isInitializationComplete) {
+            Log.d("GardenGame", "Sauvegarde annulée : chargement en cours...")
+            return 
+        }
+        scope.launch {
+            GardenRepository.saveGame(this@GardenGameState)
+        }
+    }
+
+    suspend fun loadFromFirebase() {
+        Log.d("GardenGame", "Tentative de récupération de la sauvegarde...")
+        val data = GardenRepository.loadGame()
+        
+        if (data != null) {
+            // Mise à jour des stats principales
+            coins = data.coins
+            gems = data.gems
+            xp = data.xp
+            day = data.day
+            compost = data.compost
+            rainTotems = data.rainTotems
+            totalHarvests = data.totalHarvests
+            totalWaterings = data.totalWaterings
+            
+            // Calcul du temps écoulé depuis la dernière fermeture
+            val currentTime = System.currentTimeMillis()
+            val elapsedMillis = currentTime - data.lastUpdate
+            val elapsedSeconds = (elapsedMillis / 1000)
+            
+            // Restauration des parcelles avec calcul de la croissance hors-ligne
+            if (data.slots.isNotEmpty()) {
+                data.slots.forEach { savedSlot ->
+                    if (savedSlot.id in gardenSlots.indices) {
+                        val baseSlot = gardenSlots[savedSlot.id].copy(
+                            isUnlocked = savedSlot.isUnlocked,
+                            plant = try { PlantType.valueOf(savedSlot.plantName) } catch(e: Exception) { PlantType.VIDE },
+                            progress = savedSlot.progress,
+                            water = savedSlot.water,
+                            fertilizer = savedSlot.fertilizer,
+                            starvationSeconds = savedSlot.starvationSeconds
+                        )
+                        
+                        // Si le jeu était fermé pendant un moment, on fait pousser les plantes
+                        if (elapsedSeconds > 5) {
+                            gardenSlots[savedSlot.id] = baseSlot.advance(currentWeather, elapsedSeconds)
+                        } else {
+                            gardenSlots[savedSlot.id] = baseSlot
+                        }
+                    }
+                }
+            }
+            
+            data.inventory.forEach { (name, qty) ->
+                try { produceInventory[PlantType.valueOf(name)] = qty } catch(e: Exception) {}
+            }
+            
+            data.upgrades.forEach { (name, lv) ->
+                try { upgrades[UpgradeType.valueOf(name)] = lv } catch(e: Exception) {}
+            }
+
+            if (elapsedSeconds > 60) {
+                addLog("⏰", "Bon retour !", "Pendant votre absence ($elapsedSeconds s), votre jardin a continue de pousser.", GardenMint)
+            }
+        }
+
+        // --- REPARATION DES PARCELLES ---
+        // Si le chargement a verrouillé les parcelles par erreur, on déverrouille les 6 premières.
+        if (gardenSlots.count { it.isUnlocked } < 6) {
+            for (i in 0 until 6) {
+                gardenSlots[i] = gardenSlots[i].copy(isUnlocked = true)
+            }
+            Log.d("GardenGame", "Réparation : 6 parcelles ont été déverrouillées.")
+        }
+        
+        isInitializationComplete = true
+        addLog("☁️", "Jardin synchronisé", "Vos données sont prêtes.", GardenMint)
+    }
+
+    fun manualSave() {
+        triggerSave()
+        addLog("💾", "Sauvegarde forcée", "Votre progression a été envoyée au cloud.", GardenWater)
+    }
+
     fun advanceGameTick() {
         ticks++
-        if (ticks % WEATHER_CHANGE_INTERVAL_TICKS == 0) {
+        // Changement de météo toutes les 40 secondes environ
+        if (ticks % (WEATHER_CHANGE_INTERVAL_TICKS * 5) == 0) {
             rotateWeather()
         }
 
         gardenSlots.indices.forEach { index ->
-            gardenSlots[index] = gardenSlots[index].advance(currentWeather)
+            gardenSlots[index] = gardenSlots[index].advance(currentWeather, 1L)
         }
 
-        if (ticks % DAY_LENGTH_TICKS == 0) {
+        // Un nouveau jour toutes les 10 minutes environ pour le cycle visuel
+        if (ticks % (DAY_LENGTH_TICKS * 25) == 0) {
             startNewDay()
+            triggerSave()
         }
     }
 
@@ -218,13 +323,31 @@ class GardenGameState {
         selectedSeed = seed
     }
 
+    fun removePlant(index: Int) {
+        val slot = gardenSlots.getOrNull(index) ?: return
+        if (slot.plant == PlantType.VIDE || !slot.isUnlocked) return
+
+        gardenSlots[index] = slot.clearToSoil()
+        addLog("🧹", "Parcelle nettoyee", "La culture de ${slot.plant.displayName} a ete retiree pour laisser la place.", GardenSoil)
+        triggerSave()
+    }
+
     fun onGardenSlotClick(index: Int) {
         val slot = gardenSlots.getOrNull(index) ?: return
         when {
             !slot.isUnlocked -> addLog("🔒", "Parcelle verrouillee", "Utilisez le bouton d'expansion pour ouvrir cette parcelle.", GardenLocked)
-            slot.plant == PlantType.VIDE -> plantSeed(index, slot)
-            slot.isReadyToHarvest -> harvest(index, slot, emitLog = true)
-            else -> waterSlot(index, slot)
+            slot.plant == PlantType.VIDE -> {
+                plantSeed(index, slot)
+                triggerSave() // Ajouté ici
+            }
+            slot.isReadyToHarvest -> {
+                harvest(index, slot, emitLog = true)
+                triggerSave()
+            }
+            else -> {
+                waterSlot(index, slot)
+                triggerSave()
+            }
         }
     }
 
@@ -242,6 +365,7 @@ class GardenGameState {
         totalWaterings += waterTargets.size
         awardXp(XP_PER_WATER * waterTargets.size)
         addLog("💧", "Arrosage global", "${waterTargets.size} parcelles viennent d'etre rafraichies en un geste.", GardenWater)
+        triggerSave()
     }
 
     fun harvestAllReady() {
@@ -259,6 +383,7 @@ class GardenGameState {
             totalCoinGain += result.coins
         }
         addLog("🧺", "Recolte groupée", "${harvestTargets.size} parcelles converties en $totalYield unites et $totalCoinGain or.", GardenGold)
+        triggerSave()
     }
 
     fun useCompostBurst() {
@@ -281,6 +406,7 @@ class GardenGameState {
         }
         awardXp(10)
         addLog("♻️", "Compost express", "${targets.size} parcelles gagnent un bonus de croissance visible tout de suite.", UpgradeType.COMPOSTER.accent)
+        triggerSave()
     }
 
     fun useRainTotem() {
@@ -300,6 +426,7 @@ class GardenGameState {
             }
         }
         addLog("🌧️", "Totem active", "Une pluie instantanee traverse le jardin et recharge les cultures en eau.", Weather.PLUIE.tint)
+        triggerSave()
     }
 
     fun unlockNextPlot() {
@@ -318,6 +445,7 @@ class GardenGameState {
         gardenSlots[nextIndex] = gardenSlots[nextIndex].copy(isUnlocked = true, water = 0.75f)
         awardXp(XP_PER_PLOT_UNLOCK)
         addLog("🪴", "Nouvelle parcelle", "Votre domaine s'agrandit. Une case supplementaire est prete a accueillir une idee.", GardenMint)
+        triggerSave()
     }
 
     fun claimDailyBonus() {
@@ -342,6 +470,7 @@ class GardenGameState {
             detail = "+$coinReward or, +$gemReward gemmes, +$compostReward compost${if (rainReward > 0) ", +$rainReward totem pluie" else ""}.",
             accent = GardenGold
         )
+        triggerSave()
     }
 
     fun fulfillOrder(orderId: Int) {
@@ -369,6 +498,7 @@ class GardenGameState {
             detail = "${order.clientName} repart avec ${order.quantity} ${order.plant.displayName.lowercase()}. +$rewardCoins or.",
             accent = order.plant.accentColor
         )
+        triggerSave()
     }
 
     fun refreshOrdersWithGems() {
@@ -380,6 +510,7 @@ class GardenGameState {
         gems -= ORDER_REFRESH_COST
         replaceAllOrders(day + totalOrdersCompleted + 5)
         addLog("🌀", "Marche renouvele", "Les demandes clientes viennent d'etre completement rafraichies.", GardenWater)
+        triggerSave()
     }
 
     fun buyCompostPack() {
@@ -392,6 +523,7 @@ class GardenGameState {
         coins -= cost
         compost += 2 + (upgradeLevel(UpgradeType.COMPOSTER) / 2)
         addLog("♻️", "Stock renforce", "Le reserve de compost est de nouveau confortable.", UpgradeType.COMPOSTER.accent)
+        triggerSave()
     }
 
     fun buyRainTotemPack() {
@@ -404,6 +536,7 @@ class GardenGameState {
         gems -= cost
         rainTotems += 1
         addLog("🌧️", "Totem ajoute", "Un nouveau totem pluie rejoint votre reserve de boost.", Weather.PLUIE.tint)
+        triggerSave()
     }
 
     fun upgrade(type: UpgradeType) {
@@ -424,6 +557,7 @@ class GardenGameState {
         gems -= gemCost
         upgrades[type] = currentLevel + 1
         addLog(type.icon, "${type.label} ameliore", type.description, type.accent)
+        triggerSave()
     }
 
     fun claimQuest(questId: String) {
@@ -438,6 +572,7 @@ class GardenGameState {
             detail = "${questState.definition.title} apporte un nouveau souffle au domaine.",
             accent = questState.definition.accent
         )
+        triggerSave()
     }
 
     fun inventoryCount(plant: PlantType): Int = produceInventory[plant] ?: 0
@@ -467,6 +602,8 @@ class GardenGameState {
     }
 
     private fun waterSlot(index: Int, slot: GardenSlot) {
+        if (!slot.isThirsty) return
+
         val hydrated = slot.waterPlant(wateringPower(upgradeLevel(UpgradeType.WATERING_CAN)))
         gardenSlots[index] = hydrated
         totalWaterings += 1
@@ -477,6 +614,8 @@ class GardenGameState {
     private data class HarvestResult(val units: Int, val coins: Int)
 
     private fun harvest(index: Int, slot: GardenSlot, emitLog: Boolean): HarvestResult {
+        if (!slot.isReadyToHarvest) return HarvestResult(0, 0)
+
         val units = harvestYield(slot, currentWeather)
         val coinGain = (slot.plant.harvestCoins * harvestCoinMultiplier(upgradeLevel(UpgradeType.MARKET_STAND))).toInt()
         val xpGain = XP_PER_HARVEST + slot.plant.rarity.xpBonus
@@ -577,7 +716,7 @@ class GardenGameState {
     private fun addLog(icon: String, title: String, detail: String, accent: androidx.compose.ui.graphics.Color) {
         activityLog.add(0, ActivityEntry(icon = icon, title = title, detail = detail, accent = accent))
         if (activityLog.size > 8) {
-            activityLog.removeLast()
+            activityLog.removeAt(activityLog.lastIndex)
         }
     }
 }

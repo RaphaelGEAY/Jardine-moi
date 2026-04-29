@@ -221,7 +221,7 @@ private fun SeedsMenuContent(
                         )
                         Text(
                             text = if (unlocked) {
-                                "${gameState.seedPrice(plant)} or · ${plant.growthSteps}s · ${plant.rarity.label}"
+                                "${gameState.seedPrice(plant)} or · ${formatDuration(plant.growthSeconds)} · ${plant.rarity.label}"
                             } else {
                                 "Debloque au niveau ${plant.minLevel}"
                             },
