@@ -167,9 +167,12 @@ fun GlobalAppRoot() {
 
                 composable("home") {
                     HomeScreen(
-                        viewModel = viewModel,
-                        onAddPlant = { navController.navigate("addPlant") },
-                        onViewPlants = { navController.navigate("plants") }
+                        authViewModel = viewModel,
+                        onAddPlant = { navController.navigate("plants") },
+                        onViewPlants = { navController.navigate("plants") },
+                        onPlantClick = { plant ->
+                            navController.navigate("plantDetail/${plant.id}")
+                        }
                     )
                 }
 
@@ -221,17 +224,40 @@ fun GlobalAppRoot() {
 
                     val plantId = backStackEntry.arguments?.getString("plantId")!!
                     val detailViewModel: PlantDetailViewModel = viewModel()
-
-                    LaunchedEffect(plantId) {
-                        detailViewModel.loadPlant(plantId)
-                    }
+                    val homeViewModel: com.example.jardinemoi.home.HomeViewModel = viewModel()
 
                     val plant by detailViewModel.plant.collectAsState()
+                    val myPlants by homeViewModel.myPlants.collectAsState()
+                    val isOwned = remember(myPlants, plantId) { myPlants.any { it.id == plantId } }
+
+                    LaunchedEffect(plantId, isOwned) {
+                        detailViewModel.loadPlant(plantId, isOwned)
+                    }
 
                     if (plant != null) {
                         PlantDetailScreen(
                             plant = plant!!,
-                            onAddToMyPlants = { /* TODO */ }
+                            isOwned = isOwned,
+                            onAddToMyPlants = {
+                                detailViewModel.addCurrentPlantToMyPlants { success ->
+                                    if (success) {
+                                        navController.popBackStack()
+                                    }
+                                }
+                            },
+                            onWaterPlant = {
+                                detailViewModel.waterPlant()
+                            },
+                            onRemovePlant = {
+                                detailViewModel.removePlant { success ->
+                                    if (success) {
+                                        navController.popBackStack()
+                                    }
+                                }
+                            },
+                            onBack = { navController.popBackStack() },
+                            onUpdatePotType = { detailViewModel.updatePotType(it) },
+                            onUpdateSeason = { detailViewModel.updateSeason(it) }
                         )
                     } else {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

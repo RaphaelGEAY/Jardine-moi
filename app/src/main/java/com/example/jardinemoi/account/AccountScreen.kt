@@ -13,6 +13,10 @@ import com.example.jardinemoi.auth.AuthRepository
 import com.example.jardinemoi.auth.AuthViewModel
 import com.example.jardinemoi.game.GardenGameState
 
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.jardinemoi.data.repository.PlantRepository
+import kotlinx.coroutines.launch
+
 @Composable
 fun AccountScreen(
     viewModel: AuthViewModel,
@@ -20,6 +24,8 @@ fun AccountScreen(
     onLogout: () -> Unit
 ) {
     val user = AuthRepository.currentUser()
+    val scope = rememberCoroutineScope()
+    val repository = PlantRepository()
 
     Column(
         modifier = Modifier
@@ -97,6 +103,44 @@ fun AccountScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Modifier mes informations")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Zone de Maintenance",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Si des plantes ajoutées avant la mise à jour restent bloquées, utilisez ce bouton pour réinitialiser votre jardin.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = { 
+                        scope.launch {
+                            repository.deleteAllMyPlants()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Vider complètement mon jardin")
                 }
             }
         }

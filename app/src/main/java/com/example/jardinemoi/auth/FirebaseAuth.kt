@@ -39,19 +39,18 @@ class AuthViewModel : ViewModel() {
 
     fun register(email: String, password: String, onSuccess: (FirebaseUser) -> Unit, onError: (String) -> Unit) {
         _uiState.value = AuthUiState(isLoading = true)
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener { result ->
-                val user = result.user
-                if (user != null) {
+        viewModelScope.launch {
+            when (val result = AuthRepository.register(email, password)) {
+                is AuthResult.Success -> {
                     _uiState.value = AuthUiState(isSuccess = true)
-                    onSuccess(user)
+                    onSuccess(result.user)
+                }
+                is AuthResult.Error -> {
+                    _uiState.value = AuthUiState(error = result.message)
+                    onError(result.message)
                 }
             }
-            .addOnFailureListener { e ->
-                val errorMessage = e.message ?: "Erreur inconnue"
-                _uiState.value = AuthUiState(error = errorMessage)
-                onError(errorMessage)
-            }
+        }
     }
 
     fun logout() {
