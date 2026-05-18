@@ -17,14 +17,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
-fun rememberGardenGameState(): GardenGameState {
-    val state = remember { GardenGameState() }
-    
-    // Charger les données au premier lancement
-    LaunchedEffect(Unit) {
-        state.loadFromFirebase()
+fun rememberGardenGameState(userId: String?): GardenGameState {
+    val state = remember(userId) { GardenGameState() }
+
+    LaunchedEffect(state, userId) {
+        if (userId != null) {
+            state.loadFromFirebase()
+        }
     }
-    
+
     return state
 }
 
@@ -208,14 +209,67 @@ class GardenGameState {
     private val scope = CoroutineScope(Dispatchers.Main)
     private var isInitializationComplete by mutableStateOf(false)
 
-    private fun triggerSave() {
+    private suspend fun persistCurrentState(): Boolean {
         if (!isInitializationComplete) {
             Log.d("GardenGame", "Sauvegarde annulée : chargement en cours...")
-            return 
+            return false
         }
+        return GardenRepository.saveGame(this@GardenGameState)
+    }
+
+    private fun triggerSave() {
         scope.launch {
-            GardenRepository.saveGame(this@GardenGameState)
+            persistCurrentState()
         }
+    }
+
+    private fun resolveSavedPlant(savedSlot: GardenSlotData): PlantType =
+        try {
+            PlantType.valueOf(savedSlot.plantName)
+        } catch (_: Exception) {
+            PlantType.VIDE
+        }
+
+    private fun resolveSlotLastUpdatedAt(savedSlot: GardenSlotData, saveLastUpdate: Long, currentTime: Long): Long {
+        return when {
+            savedSlot.lastUpdatedAt > 0L -> savedSlot.lastUpdatedAt
+            saveLastUpdate > 0L -> saveLastUpdate
+            else -> currentTime
+        }
+    }
+
+    private fun resolveSlotPlantedAt(
+        savedSlot: GardenSlotData,
+        plant: PlantType,
+        currentTime: Long,
+        fallbackLastUpdatedAt: Long
+    ): Long {
+        if (plant == PlantType.VIDE) return 0L
+        if (savedSlot.plantedAt > 0L) return savedSlot.plantedAt
+
+        val inferredElapsedMillis = savedSlot.progress
+            .coerceAtLeast(0L)
+            .coerceAtMost(currentTime / 1000L) * 1000L
+
+        return when {
+            inferredElapsedMillis > 0L -> (currentTime - inferredElapsedMillis).coerceAtLeast(0L)
+            else -> fallbackLastUpdatedAt
+        }
+    }
+
+    private fun resolveRestoredProgress(
+        savedProgress: Long,
+        plant: PlantType,
+        plantedAt: Long,
+        currentTime: Long
+    ): Long {
+        if (plant == PlantType.VIDE) return 0L
+        val timeBasedProgress = if (plantedAt > 0L) {
+            ((currentTime - plantedAt).coerceAtLeast(0L) / 1000L).coerceAtMost(plant.growthSeconds)
+        } else {
+            0L
+        }
+        return maxOf(savedProgress.coerceAtLeast(0L), timeBasedProgress)
     }
 
     suspend fun loadFromFirebase() {
@@ -242,21 +296,27 @@ class GardenGameState {
             if (data.slots.isNotEmpty()) {
                 data.slots.forEach { savedSlot ->
                     if (savedSlot.id in gardenSlots.indices) {
+                        val plant = resolveSavedPlant(savedSlot)
+                        val slotLastUpdatedAt = resolveSlotLastUpdatedAt(savedSlot, data.lastUpdate, currentTime)
+                        val plantedAt = resolveSlotPlantedAt(savedSlot, plant, currentTime, slotLastUpdatedAt)
+                        val restoredProgress = resolveRestoredProgress(
+                            savedProgress = savedSlot.progress,
+                            plant = plant,
+                            plantedAt = plantedAt,
+                            currentTime = currentTime
+                        )
                         val baseSlot = gardenSlots[savedSlot.id].copy(
                             isUnlocked = savedSlot.isUnlocked,
-                            plant = try { PlantType.valueOf(savedSlot.plantName) } catch(e: Exception) { PlantType.VIDE },
-                            progress = savedSlot.progress,
+                            plant = plant,
+                            progress = restoredProgress,
                             water = savedSlot.water,
                             fertilizer = savedSlot.fertilizer,
-                            starvationSeconds = savedSlot.starvationSeconds
+                            starvationSeconds = savedSlot.starvationSeconds,
+                            plantedAt = plantedAt,
+                            lastUpdatedAt = currentTime
                         )
-                        
-                        // Si le jeu était fermé pendant un moment, on fait pousser les plantes
-                        if (elapsedSeconds > 1) {
-                            gardenSlots[savedSlot.id] = baseSlot.advance(currentWeather, elapsedSeconds)
-                        } else {
-                            gardenSlots[savedSlot.id] = baseSlot
-                        }
+
+                        gardenSlots[savedSlot.id] = baseSlot
                     }
                 }
             }
@@ -288,8 +348,19 @@ class GardenGameState {
     }
 
     fun manualSave() {
+        scope.launch {
+            if (persistCurrentState()) {
+                addLog("💾", "Sauvegarde forcée", "Votre progression a été envoyée au cloud.", GardenWater)
+            }
+        }
+    }
+
+    fun saveSilently() {
         triggerSave()
-        addLog("💾", "Sauvegarde forcée", "Votre progression a été envoyée au cloud.", GardenWater)
+    }
+
+    suspend fun saveBeforeLogout() {
+        persistCurrentState()
     }
 
     fun advanceGameTick() {
@@ -306,6 +377,10 @@ class GardenGameState {
         // Un nouveau jour toutes les 10 minutes environ pour le cycle visuel
         if (ticks % (DAY_LENGTH_TICKS * 25) == 0) {
             startNewDay()
+            triggerSave()
+        }
+
+        if (ticks % 20 == 0) {
             triggerSave()
         }
     }

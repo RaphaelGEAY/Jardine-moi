@@ -14,9 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -58,10 +61,12 @@ class GlobalAppActivity : ComponentActivity() {
 fun GlobalAppRoot() {
     val navController = rememberNavController()
     val viewModel: AuthViewModel = viewModel()
-    val gardenGameState = rememberGardenGameState()
 
     // 🔥 Navigation pilotée par Firebase
     val isAuthenticated by viewModel.isAuthenticated.collectAsState()
+    val userId = if (isAuthenticated) viewModel.currentUser()?.uid else null
+    val gardenGameState = rememberGardenGameState(userId = userId)
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // 🔥 Navigation automatique selon l'état Firebase
     LaunchedEffect(isAuthenticated) {
@@ -78,6 +83,22 @@ fun GlobalAppRoot() {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    DisposableEffect(lifecycleOwner, isAuthenticated, gardenGameState) {
+        if (!isAuthenticated) {
+            onDispose { }
+        } else {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) {
+                    gardenGameState.saveSilently()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
+    }
 
     // Liste des destinations principales pour la barre de navigation
     val items = listOf(
@@ -167,9 +188,11 @@ fun GlobalAppRoot() {
 
                 composable("home") {
                     HomeScreen(
-                        viewModel = viewModel,
-                        onAddPlant = { navController.navigate("addPlant") },
-                        onViewPlants = { navController.navigate("plants") }
+                        authViewModel = viewModel,
+                        onAddPlant = { navController.navigate("plants") },
+                        onPlantClick = { plant ->
+                            navController.navigate("plantDetail/${plant.id}")
+                        }
                     )
                 }
 
@@ -189,18 +212,11 @@ fun GlobalAppRoot() {
 
                 composable("account") {
                     AccountScreen(
-                        viewModel = viewModel,
                         gameState = gardenGameState,
-                        onLogout = { viewModel.logout() }
+                        onLogout = viewModel::logout
                     )
                 }
 
-                // 🔥 Ajouter une plante (placeholder)
-                composable("addPlant") {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Ajouter une plante (à venir)")
-                    }
-                }
 
                 // 🌿 Liste des plantes
                 composable("plants") {
@@ -221,17 +237,44 @@ fun GlobalAppRoot() {
 
                     val plantId = backStackEntry.arguments?.getString("plantId")!!
                     val detailViewModel: PlantDetailViewModel = viewModel()
-
-                    LaunchedEffect(plantId) {
-                        detailViewModel.loadPlant(plantId)
-                    }
+                    val homeViewModel: com.example.jardinemoi.home.HomeViewModel = viewModel()
 
                     val plant by detailViewModel.plant.collectAsState()
+                    val extractedColors by detailViewModel.extractedColors.collectAsState()
+                    val myPlants by homeViewModel.myPlants.collectAsState()
+                    val isOwned = remember(myPlants, plantId) { myPlants.any { it.id == plantId } }
+                    val context = androidx.compose.ui.platform.LocalContext.current
+
+                    LaunchedEffect(plantId, isOwned) {
+                        detailViewModel.loadPlant(plantId, isOwned, context)
+                    }
 
                     if (plant != null) {
                         PlantDetailScreen(
                             plant = plant!!,
-                            onAddToMyPlants = { /* TODO */ }
+                            isOwned = isOwned,
+                            extractedColors = extractedColors,
+                            onAddToMyPlants = {
+                                detailViewModel.addCurrentPlantToMyPlants { success ->
+                                    if (success) {
+                                        navController.popBackStack()
+                                    }
+                                }
+                            },
+                            onWaterPlant = {
+                                detailViewModel.waterPlant()
+                            },
+                            onRemovePlant = {
+                                detailViewModel.removePlant { success ->
+                                    if (success) {
+                                        navController.popBackStack()
+                                    }
+                                }
+                            },
+                            onBack = { navController.popBackStack() },
+                            onUpdatePotType = { detailViewModel.updatePotType(it) },
+                            onUpdateSeason = { detailViewModel.updateSeason(it) },
+                            onDebugAccelerate = { detailViewModel.debugAccelerateGrowth() }
                         )
                     } else {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

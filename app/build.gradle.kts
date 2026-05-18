@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId = "com.example.jardinemoi"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -73,7 +73,9 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.palette.ktx)
     implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.kotlinx.serialization.json)
 }
 
 

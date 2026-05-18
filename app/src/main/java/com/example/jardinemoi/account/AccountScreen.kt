@@ -2,7 +2,7 @@ package com.example.jardinemoi.account
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -10,16 +10,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.jardinemoi.auth.AuthRepository
-import com.example.jardinemoi.auth.AuthViewModel
 import com.example.jardinemoi.game.GardenGameState
+
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.jardinemoi.data.repository.PlantRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun AccountScreen(
-    viewModel: AuthViewModel,
     gameState: GardenGameState? = null,
     onLogout: () -> Unit
 ) {
     val user = AuthRepository.currentUser()
+    val scope = rememberCoroutineScope()
+    val repository = PlantRepository()
 
     Column(
         modifier = Modifier
@@ -80,23 +84,41 @@ fun AccountScreen(
             }
         }
 
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+            )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Paramètres",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "Zone de Maintenance",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                Button(
-                    onClick = { /* TODO: Modifier les informations */ },
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    text = "Si des plantes ajoutées avant la mise à jour restent bloquées, utilisez ce bouton pour réinitialiser votre jardin.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = { 
+                        scope.launch {
+                            repository.deleteAllMyPlants()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Modifier mes informations")
+                    Text("Vider complètement mon jardin")
                 }
             }
         }
@@ -106,13 +128,15 @@ fun AccountScreen(
         // --- LOGOUT ---
         Button(
             onClick = {
-                viewModel.logout()
-                onLogout()
+                scope.launch {
+                    gameState?.saveBeforeLogout()
+                    onLogout()
+                }
             },
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(Icons.Default.ExitToApp, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text("Se déconnecter")
         }
