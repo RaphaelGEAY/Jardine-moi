@@ -19,7 +19,6 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel = viewModel(),
     onAddPlant: () -> Unit,
-    onViewPlants: () -> Unit,
     onPlantClick: (com.example.jardinemoi.data.model.PlantInfo) -> Unit
 ) {
     val user = AuthRepository.currentUser()
@@ -117,16 +116,7 @@ fun HomeScreen(
             onClick = onAddPlant,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Ajouter une plante")
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedButton(
-            onClick = onViewPlants,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Catalogue des plantes")
+            Text("Catalogue & Ajout de plantes")
         }
     }
 }

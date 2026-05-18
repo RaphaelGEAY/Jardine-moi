@@ -85,7 +85,7 @@ class PlantRepository {
                         in 7..10 -> "Plein soleil"
                         else -> "Non spécifiée"
                     },
-                    wateringFrequencyDays = 7
+                    wateringFrequencyDays = calculateWateringFrequency(detail.common_name, detail.scientific_name, species?.growth)
                 )
             } catch (e: Exception) {
                 null
@@ -95,12 +95,51 @@ class PlantRepository {
         return null
     }
 
+    private fun calculateWateringFrequency(commonName: String?, scientificName: String?, growth: com.example.jardinemoi.data.trefle.TrefleGrowth?): Int {
+        // 1. Priorité à la donnée officielle Trefle : MOISTURE USE
+        growth?.moisture_use?.let {
+            return when (it.lowercase()) {
+                "high" -> 3   // Grand consommateur d'eau
+                "medium" -> 6 // Consommation moyenne
+                "low" -> 12   // Très sobre (Cactus, etc.)
+                else -> 7
+            }
+        }
+
+        // 2. Secours : Données de précipitations
+        val minPrecipitation = growth?.minimum_precipitation?.get("mm")
+        if (minPrecipitation != null) {
+            return when {
+                minPrecipitation < 300 -> 14
+                minPrecipitation < 600 -> 9
+                minPrecipitation < 1000 -> 6
+                else -> 3
+            }
+        }
+
+        // 3. Secours ultime : Mots-clés (Heuristique)
+        val name = (commonName ?: scientificName ?: "").lowercase()
+        val base = when {
+            name.contains("cactus") || name.contains("succulent") || name.contains("aloe") || name.contains("crassula") -> 15
+            name.contains("fern") || name.contains("fougère") || name.contains("pothos") || name.contains("tropical") -> 3
+            name.contains("rose") || name.contains("lavender") || name.contains("lavande") -> 5
+            else -> 7
+        }
+
+        // 4. Variation unique pour éviter l'effet "copier-coller"
+        val variation = (scientificName?.length ?: 0) % 3 - 1
+        return (base + variation).coerceIn(1, 21)
+    }
+
     suspend fun addToMyPlants(plant: PlantInfo): Result<Unit> {
         val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Utilisateur non connecté"))
         val plantId = plant.id.ifEmpty { plant.commonName.filter { it.isLetterOrDigit() } }
         
         return try {
-            val finalPlant = plant.copy(id = plantId)
+            val finalPlant = plant.copy(
+                id = plantId,
+                plantedAt = System.currentTimeMillis() // Fixe le début de la croissance en temps réel
+            )
             firestore.collection("users")
                 .document(userId)
                 .collection("my_plants")
@@ -125,7 +164,7 @@ class PlantRepository {
                     genus = treflePlant.genus ?: "Inconnu",
                     imageUrl = treflePlant.image_url ?: "",
                     exposure = "Non spécifiée",
-                    wateringFrequencyDays = 7
+                    wateringFrequencyDays = calculateWateringFrequency(treflePlant.common_name, treflePlant.scientific_name, null)
                 )
             }
         } catch (e: Exception) {
@@ -184,30 +223,32 @@ class PlantRepository {
         }
     }
 
-    // 🔥 Marquer une plante comme arrosée et gagner des points
+    // 🔥 Marquer une plante comme arrosée
     suspend fun waterPlant(plantId: String): Result<Unit> {
         val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Non connecté"))
         return try {
             val docRef = firestore.collection("users").document(userId)
                 .collection("my_plants").document(plantId)
             
-            firestore.runTransaction { transaction ->
-                val snapshot = transaction.get(docRef)
-                val currentPoints = (snapshot.getLong("carePoints") ?: 0) + 10
-                
-                // Calcul de l'évolution
-                val (newStage, progress) = when {
-                    currentPoints >= 300 -> "Mature" to 1.0f
-                    currentPoints >= 150 -> "Croissance" to (currentPoints - 150) / 150f
-                    currentPoints >= 50 -> "Jeune pousse" to (currentPoints - 50) / 100f
-                    else -> "Graine" to currentPoints / 50f
-                }
-                
-                transaction.update(docRef, "lastWateredDate", System.currentTimeMillis())
-                transaction.update(docRef, "carePoints", currentPoints)
-                transaction.update(docRef, "currentStage", newStage)
-                transaction.update(docRef, "growthProgress", progress)
-            }.await()
+            docRef.update("lastWateredDate", System.currentTimeMillis()).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // 🔥 Debug : Accélérer la croissance (avance l'horloge de 1 heure)
+    suspend fun debugAccelerateGrowth(plantId: String): Result<Unit> {
+        val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Non connecté"))
+        return try {
+            val docRef = firestore.collection("users").document(userId)
+                .collection("my_plants").document(plantId)
+            
+            val doc = docRef.get().await()
+            val currentPlantedAt = doc.getLong("plantedAt") ?: System.currentTimeMillis()
+            
+            // On recule la date de plantation d'une heure pour simuler le temps qui passe
+            docRef.update("plantedAt", currentPlantedAt - (1000 * 60 * 60)).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

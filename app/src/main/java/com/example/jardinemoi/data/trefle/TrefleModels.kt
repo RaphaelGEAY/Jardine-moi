@@ -33,6 +33,8 @@ data class TrefleSpecies(
 
 data class TrefleGrowth(
     val light: Int?, // 0-10 scale usually or specific mapping
+    val growth_rate: String?, // Slow, Moderate, Rapid
+    val moisture_use: String?, // Low, Medium, High
     val minimum_precipitation: Map<String, Double>?,
     val maximum_precipitation: Map<String, Double>?
 )

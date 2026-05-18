@@ -169,7 +169,6 @@ fun GlobalAppRoot() {
                     HomeScreen(
                         authViewModel = viewModel,
                         onAddPlant = { navController.navigate("plants") },
-                        onViewPlants = { navController.navigate("plants") },
                         onPlantClick = { plant ->
                             navController.navigate("plantDetail/${plant.id}")
                         }
@@ -198,12 +197,6 @@ fun GlobalAppRoot() {
                     )
                 }
 
-                // 🔥 Ajouter une plante (placeholder)
-                composable("addPlant") {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Ajouter une plante (à venir)")
-                    }
-                }
 
                 // 🌿 Liste des plantes
                 composable("plants") {
@@ -227,17 +220,20 @@ fun GlobalAppRoot() {
                     val homeViewModel: com.example.jardinemoi.home.HomeViewModel = viewModel()
 
                     val plant by detailViewModel.plant.collectAsState()
+                    val extractedColors by detailViewModel.extractedColors.collectAsState()
                     val myPlants by homeViewModel.myPlants.collectAsState()
                     val isOwned = remember(myPlants, plantId) { myPlants.any { it.id == plantId } }
+                    val context = androidx.compose.ui.platform.LocalContext.current
 
                     LaunchedEffect(plantId, isOwned) {
-                        detailViewModel.loadPlant(plantId, isOwned)
+                        detailViewModel.loadPlant(plantId, isOwned, context)
                     }
 
                     if (plant != null) {
                         PlantDetailScreen(
                             plant = plant!!,
                             isOwned = isOwned,
+                            extractedColors = extractedColors,
                             onAddToMyPlants = {
                                 detailViewModel.addCurrentPlantToMyPlants { success ->
                                     if (success) {
@@ -257,7 +253,8 @@ fun GlobalAppRoot() {
                             },
                             onBack = { navController.popBackStack() },
                             onUpdatePotType = { detailViewModel.updatePotType(it) },
-                            onUpdateSeason = { detailViewModel.updateSeason(it) }
+                            onUpdateSeason = { detailViewModel.updateSeason(it) },
+                            onDebugAccelerate = { detailViewModel.debugAccelerateGrowth() }
                         )
                     } else {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

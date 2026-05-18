@@ -1,5 +1,7 @@
 package com.example.jardinemoi.game
 
+import com.google.firebase.firestore.PropertyName
+
 /**
  * Version simplifiée de l'état du jeu pour Firebase
  */
@@ -20,6 +22,7 @@ data class GardenSaveData(
 
 data class GardenSlotData(
     val id: Int = 0,
+    @PropertyName("isUnlocked")
     val isUnlocked: Boolean = false,
     val plantName: String = "VIDE",
     val progress: Long = 0,

@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "712617867184-9b7a2c8857f73716faf285710c978444.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.jardinemoi",
+            "certificate_hash": "9b7a2c8857f73716faf285710c9784444ecbbfde0eb18ad044ffa7bd65dad3ca"
+          }
+        },
+        {
           "client_id": "712617867184-gtom4u4sh8m6pl9js9sajkbemgvptob3.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -2,7 +2,7 @@ package com.example.jardinemoi.account
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -86,26 +86,6 @@ fun AccountScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Paramètres",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Button(
-                    onClick = { /* TODO: Modifier les informations */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Modifier mes informations")
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -156,7 +136,7 @@ fun AccountScreen(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(Icons.Default.ExitToApp, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text("Se déconnecter")
         }
