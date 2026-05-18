@@ -157,7 +157,9 @@ data class GardenSlot(
     val progress: Long = 0,
     val water: Float = 0.72f,
     val fertilizer: Float = 0f,
-    val starvationSeconds: Long = 0L
+    val starvationSeconds: Long = 0L,
+    val plantedAt: Long = 0L,
+    val lastUpdatedAt: Long = System.currentTimeMillis()
 )
 
 enum class PlantType(

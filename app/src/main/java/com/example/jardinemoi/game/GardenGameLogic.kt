@@ -151,6 +151,12 @@ internal fun orderRewardMultiplier(level: Int): Float = 1f + (level * 0.15f)
 
 internal fun dailyCompostIncome(level: Int): Int = 1 + (level / 2)
 
+internal fun GardenSlot.progressFromPlantedAt(currentTime: Long): Long {
+    if (plant == PlantType.VIDE || plantedAt <= 0L) return progress
+    val elapsedSeconds = ((currentTime - plantedAt).coerceAtLeast(0L) / 1000L)
+    return elapsedSeconds.coerceAtMost(plant.growthSeconds)
+}
+
 internal fun GardenSlot.advance(weather: Weather, elapsedSeconds: Long = 1L): GardenSlot {
     if (!isUnlocked || plant == PlantType.VIDE || isReadyToHarvest) return this
 
@@ -194,21 +200,45 @@ internal fun GardenSlot.advance(weather: Weather, elapsedSeconds: Long = 1L): Ga
         progress = nextProgress,
         water = nextWater,
         fertilizer = nextFertilizer,
-        starvationSeconds = nextStarvation
+        starvationSeconds = nextStarvation,
+        lastUpdatedAt = System.currentTimeMillis()
     )
 }
 
 internal fun GardenSlot.plantSeed(seed: PlantType): GardenSlot =
-    copy(plant = seed, progress = 0, water = 0.74f, fertilizer = 0f, starvationSeconds = 0L)
+    copy(
+        plant = seed,
+        progress = 0,
+        water = 0.74f,
+        fertilizer = 0f,
+        starvationSeconds = 0L,
+        plantedAt = System.currentTimeMillis(),
+        lastUpdatedAt = System.currentTimeMillis()
+    )
 
 internal fun GardenSlot.waterPlant(power: Float): GardenSlot =
-    copy(water = (water + power).coerceAtMost(1f), starvationSeconds = 0L)
+    copy(
+        water = (water + power).coerceAtMost(1f),
+        starvationSeconds = 0L,
+        lastUpdatedAt = System.currentTimeMillis()
+    )
 
 internal fun GardenSlot.applyCompost(power: Float): GardenSlot =
-    copy(fertilizer = (fertilizer + power).coerceAtMost(1f))
+    copy(
+        fertilizer = (fertilizer + power).coerceAtMost(1f),
+        lastUpdatedAt = System.currentTimeMillis()
+    )
 
 internal fun GardenSlot.clearToSoil(): GardenSlot =
-    copy(plant = PlantType.VIDE, progress = 0, water = 0.7f, fertilizer = 0f, starvationSeconds = 0L)
+    copy(
+        plant = PlantType.VIDE,
+        progress = 0,
+        water = 0.7f,
+        fertilizer = 0f,
+        starvationSeconds = 0L,
+        plantedAt = 0L,
+        lastUpdatedAt = System.currentTimeMillis()
+    )
 
 internal val GardenSlot.isReadyToHarvest: Boolean
     get() = plant != PlantType.VIDE && progress >= plant.growthSeconds

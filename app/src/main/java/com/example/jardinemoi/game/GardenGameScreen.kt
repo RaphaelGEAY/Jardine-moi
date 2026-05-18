@@ -19,7 +19,7 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GardenGameScreen(gameState: GardenGameState = rememberGardenGameState()) {
+fun GardenGameScreen(gameState: GardenGameState) {
     var selectedMenu by remember { mutableStateOf(GardenMenuSheet.SEEDS) }
 
     LaunchedEffect(gameState) {
