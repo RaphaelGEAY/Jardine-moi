@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.example.jardinemoi.auth.AuthRepository
 import com.example.jardinemoi.auth.AuthViewModel
+import com.example.jardinemoi.game.GardenGameState
 
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountScreen(
     viewModel: AuthViewModel,
+    gameState: GardenGameState? = null,
     onLogout: () -> Unit
 ) {
     val user = AuthRepository.currentUser()
@@ -137,8 +139,10 @@ fun AccountScreen(
         // --- LOGOUT ---
         Button(
             onClick = {
-                viewModel.logout()
-                onLogout()
+                scope.launch {
+                    gameState?.saveBeforeLogout()
+                    onLogout()
+                }
             },
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()

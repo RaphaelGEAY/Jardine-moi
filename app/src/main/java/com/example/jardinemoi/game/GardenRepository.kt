@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.tasks.await
 
 object GardenRepository {
@@ -14,11 +15,11 @@ object GardenRepository {
         db.collection("users").document(uid).collection("game").document("state")
     }
 
-    suspend fun saveGame(state: GardenGameState) {
+    suspend fun saveGame(state: GardenGameState): Boolean {
         val doc = getUserDoc()
         if (doc == null) {
             Log.e("GardenRepo", "ERREUR: Utilisateur non connecté, impossible de sauvegarder")
-            return
+            return false
         }
         
         val saveData = GardenSaveData(
@@ -39,7 +40,9 @@ object GardenRepository {
                     progress = slot.progress,
                     water = slot.water,
                     fertilizer = slot.fertilizer,
-                    starvationSeconds = slot.starvationSeconds
+                    starvationSeconds = slot.starvationSeconds,
+                    plantedAt = slot.plantedAt,
+                    lastUpdatedAt = slot.lastUpdatedAt
                 )
             },
             inventory = state.produceInventory.mapKeys { it.key.name },
@@ -50,15 +53,23 @@ object GardenRepository {
         try {
             doc.set(saveData, SetOptions.merge()).await()
             Log.d("GardenRepo", "✅ Sauvegarde réussie pour: ${auth.currentUser?.email}")
+            return true
         } catch (e: Exception) {
             Log.e("GardenRepo", "❌ ÉCHEC de sauvegarde: ${e.message}")
+            return false
         }
     }
 
     suspend fun loadGame(): GardenSaveData? {
         val doc = getUserDoc() ?: return null
         return try {
-            val snapshot = doc.get().await()
+            val snapshot = try {
+                doc.get(Source.SERVER).await()
+            } catch (serverError: Exception) {
+                Log.w("GardenRepo", "⚠️ Chargement serveur impossible, fallback cache: ${serverError.message}")
+                doc.get(Source.CACHE).await()
+            }
+
             val data = snapshot.toObject(GardenSaveData::class.java)
             if (data != null) Log.d("GardenRepo", "✅ Données chargées avec succès")
             data
