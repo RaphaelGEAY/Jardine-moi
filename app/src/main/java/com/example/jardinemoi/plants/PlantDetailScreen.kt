@@ -47,7 +47,6 @@ fun PlantDetailScreen(
     onRemovePlant: () -> Unit = {},
     onBack: () -> Unit = {},
     onUpdatePotType: (String) -> Unit = {},
-    onUpdateSeason: (String) -> Unit = {},
     onDebugAccelerate: () -> Unit = {},
     extractedColors: List<Color> = listOf(Color(0xFF4CAF50), Color(0xFF8BC34A))
 ) {
@@ -167,22 +166,19 @@ fun PlantDetailScreen(
                                 "Graine" -> {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         SeedDrawing(plant.growthProgress)
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        PotDrawing(plant.potType, Modifier.size(100.dp, 60.dp))
+                                        PotDrawing(plant.potType, Modifier.size(100.dp, 60.dp).offset(y = (-15).dp))
                                     }
                                 }
                                 "Jeune pousse" -> {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         YoungSproutDrawing(plant.growthProgress, primaryPlantColor, secondaryPlantColor)
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        PotDrawing(plant.potType, Modifier.size(110.dp, 70.dp))
+                                        PotDrawing(plant.potType, Modifier.size(110.dp, 70.dp).offset(y = (-15).dp))
                                     }
                                 }
                                 "Croissance" -> {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         GrowthDrawing(plant.growthProgress, primaryPlantColor, secondaryPlantColor)
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        PotDrawing(plant.potType, Modifier.size(130.dp, 85.dp))
+                                        PotDrawing(plant.potType, Modifier.size(130.dp, 85.dp).offset(y = (-20).dp))
                                     }
                                 }
                                 else -> {
@@ -207,7 +203,6 @@ fun PlantDetailScreen(
                 plant = plant,
                 isOwned = isOwned,
                 onUpdatePotType = onUpdatePotType,
-                onUpdateSeason = onUpdateSeason,
                 onAddToMyPlants = onAddToMyPlants,
                 onWaterPlant = onWaterPlant,
                 onRemovePlant = onRemovePlant,
@@ -225,7 +220,7 @@ fun SeedDrawing(progress: Float) {
         val h = size.height
         
         // La graine bouge un peu selon le progrès interne du stade
-        val seedY = h * 0.7f - (progress * 10f)
+        val seedY = h * 0.85f - (progress * 10f)
         drawOval(
             color = Color(0xFF8B4513),
             topLeft = Offset(w * 0.4f, seedY),
@@ -348,13 +343,15 @@ fun PlantInfoContent(
     plant: PlantInfo,
     isOwned: Boolean,
     onUpdatePotType: (String) -> Unit,
-    onUpdateSeason: (String) -> Unit,
     onAddToMyPlants: () -> Unit,
     onWaterPlant: () -> Unit,
     onRemovePlant: () -> Unit,
     onDebugAccelerate: () -> Unit,
     currentTime: Long
 ) {
+    val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+    val isDebugUser = currentUser?.email == "nat@nat.com"
+
     Column(modifier = Modifier.padding(24.dp).fillMaxWidth()) {
         Text(text = plant.commonName, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(text = plant.species, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary, fontStyle = FontStyle.Italic)
@@ -369,14 +366,27 @@ fun PlantInfoContent(
                         FilterChip(selected = plant.potType == pot, onClick = { onUpdatePotType(pot) }, label = { Text(pot) })
                     }
                 }
-                Text("Saison actuelle", style = MaterialTheme.typography.labelMedium)
-                Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Printemps", "Été", "Automne", "Hiver").forEach { s ->
-                        FilterChip(selected = plant.season == s, onClick = { onUpdateSeason(s) }, label = { Text(s) })
-                    }
-                }
+                
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 InfoRow(label = "Besoin en lumière", value = plant.exposure)
+                
+                val calendar = java.util.Calendar.getInstance()
+                val month = calendar.get(java.util.Calendar.MONTH) + 1
+                val realSeason = when (month) {
+                    3, 4, 5 -> "Printemps"
+                    6, 7, 8 -> "Été"
+                    9, 10, 11 -> "Automne"
+                    else -> "Hiver"
+                }
+                InfoRow(label = "Saison ", value = realSeason)
+
+                val speedText = when {
+                    plant.growthMultiplier > 1.0f -> "Rapide (x${plant.growthMultiplier})"
+                    plant.growthMultiplier < 1.0f -> "Lente (x${plant.growthMultiplier})"
+                    else -> "Normale"
+                }
+                InfoRow(label = "Vitesse de croissance", value = speedText)
+
                 if (isOwned) {
                     InfoRow(label = "Stade de croissance", value = plant.currentStage)
                     
@@ -422,7 +432,7 @@ fun PlantInfoContent(
                     InfoRow(label = "Santé", value = "${plant.healthLevel}%")
                 }
                 val adjustedFrequency = if (plant.potType == "Terre cuite") (plant.wateringFrequencyDays * 0.7).toInt().coerceAtLeast(1) else plant.wateringFrequencyDays
-                InfoRow(label = "Fréquence calculée", value = "Tous les $adjustedFrequency jours")
+                InfoRow(label = "Fréquence arrosage", value = "Tous les $adjustedFrequency jours")
             }
         }
         Spacer(modifier = Modifier.height(32.dp))
@@ -438,14 +448,17 @@ fun PlantInfoContent(
                 Spacer(Modifier.width(8.dp))
                 Text("Arroser la plante (+10 pts)")
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onDebugAccelerate,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("DEBUG: +1h de croissance")
+
+            if (isDebugUser) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onDebugAccelerate,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("DEBUG: Sauter au prochain stade")
+                }
             }
         }
         if (isOwned) {

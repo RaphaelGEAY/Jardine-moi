@@ -65,12 +65,16 @@ fun RegisterScreen(
 
         Button(
             onClick = { 
-                viewModel.register(
-                    email = email, 
-                    password = password,
-                    onSuccess = { user -> onRegisterSuccess(user, name, email) },
-                    onError = { /* L'erreur est déjà gérée via state.error dans le ViewModel */ }
-                ) 
+                if (name.isBlank() || email.isBlank() || password.isBlank()) {
+                    viewModel.setError("Veuillez remplir tous les champs.")
+                } else {
+                    viewModel.register(
+                        email = email, 
+                        password = password,
+                        onSuccess = { user -> onRegisterSuccess(user, name, email) },
+                        onError = { /* L'erreur est déjà gérée via state.error dans le ViewModel */ }
+                    ) 
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = !state.isLoading

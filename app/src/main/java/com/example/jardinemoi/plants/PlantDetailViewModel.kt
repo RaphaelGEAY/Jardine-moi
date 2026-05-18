@@ -98,10 +98,6 @@ class PlantDetailViewModel(
         _plant.value = _plant.value?.copy(potType = potType)
     }
 
-    fun updateSeason(season: String) {
-        _plant.value = _plant.value?.copy(season = season)
-    }
-
     fun updateExposure(exposure: String) {
         _plant.value = _plant.value?.copy(exposure = exposure)
     }

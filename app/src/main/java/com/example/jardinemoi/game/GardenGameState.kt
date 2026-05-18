@@ -105,6 +105,9 @@ class GardenGameState {
     var totalCompostUsed by mutableIntStateOf(0)
         private set
 
+    var totalPlantsPlanted by mutableIntStateOf(0)
+        private set
+
     var playerUnlockedPlots by mutableIntStateOf(0)
         private set
 
@@ -232,6 +235,7 @@ class GardenGameState {
             rainTotems = data.rainTotems
             totalHarvests = data.totalHarvests
             totalWaterings = data.totalWaterings
+            totalPlantsPlanted = data.totalPlantsPlanted
             
             // Calcul du temps écoulé depuis la dernière fermeture
             val currentTime = System.currentTimeMillis()
@@ -597,6 +601,7 @@ class GardenGameState {
         }
 
         coins -= price
+        totalPlantsPlanted += 1
         gardenSlots[index] = slot.plantSeed(selectedSeed)
         addLog(selectedSeed.emoji, "${selectedSeed.displayName} plantee", "Touchez ensuite la parcelle si elle passe a l'orange pour la rehydrater.", selectedSeed.accentColor)
     }

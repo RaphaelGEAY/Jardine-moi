@@ -30,7 +30,7 @@ class PlantListViewModel(
         viewModelScope.launch {
             repository.getAllPlants().collectLatest { list ->
                 if (_searchQuery.value.isEmpty()) {
-                    _plants.value = list
+                    _plants.value = list.filter { it.commonName != "Monstera" }
                 }
             }
         }
@@ -49,7 +49,7 @@ class PlantListViewModel(
         viewModelScope.launch {
             _isSearching.value = true
             val results = repository.searchPlantsOnline(query)
-            _plants.value = results
+            _plants.value = results.filter { it.commonName != "Monstera" }
             _isSearching.value = false
         }
     }

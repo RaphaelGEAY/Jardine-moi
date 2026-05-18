@@ -1,7 +1,6 @@
 package com.example.jardinemoi.data.model
 
 import com.google.firebase.firestore.Exclude
-import com.google.firebase.firestore.PropertyName
 
 data class PlantInfo(
     val id: String = "",
@@ -13,11 +12,9 @@ data class PlantInfo(
     val category: String = "Plante",
     
     // Paramètres de soin
-    @PropertyName("wateringFrequencyDays")
     var wateringFrequencyDays: Int = 7,
     val exposure: String = "Mi-ombre",
     val potType: String = "Plastique",
-    val season: String = "Printemps",
     
     // Suivi et Gamification
     val plantedAt: Long = System.currentTimeMillis(),
@@ -42,10 +39,32 @@ data class PlantInfo(
     val growthProgress: Float
         get() = calculateGrowthProgress(System.currentTimeMillis())
 
+    @get:Exclude
+    val growthMultiplier: Float
+        get() {
+            val calendar = java.util.Calendar.getInstance()
+            val month = calendar.get(java.util.Calendar.MONTH) + 1 // 0-indexed to 1-12
+            
+            val realSeason = when (month) {
+                3, 4, 5 -> "Printemps"
+                6, 7, 8 -> "Été"
+                9, 10, 11 -> "Automne"
+                else -> "Hiver"
+            }
+            
+            return when (realSeason) {
+                "Printemps" -> 1.5f
+                "Été" -> 1.2f
+                "Automne" -> 0.8f
+                "Hiver" -> 0.4f
+                else -> 1.0f
+            }
+        }
+
     fun calculateGrowthProgress(now: Long): Float {
         val totalDurationMs = (wateringFrequencyDays * 24 * 60 * 60 * 1000L) / 2
-        val elapsed = now - plantedAt
-        return (elapsed.toFloat() / totalDurationMs).coerceIn(0f, 1f)
+        val effectiveElapsed = (now - plantedAt) * growthMultiplier
+        return (effectiveElapsed.toFloat() / totalDurationMs).coerceIn(0f, 1f)
     }
 
     @get:Exclude
@@ -54,8 +73,8 @@ data class PlantInfo(
 
     fun calculateTimeToNextStageMs(now: Long): Long? {
         val totalDurationMs = (wateringFrequencyDays * 24 * 60 * 60 * 1000L) / 2
-        val elapsed = now - plantedAt
-        val progress = elapsed.toFloat() / totalDurationMs
+        val effectiveElapsed = (now - plantedAt) * growthMultiplier
+        val progress = effectiveElapsed.toFloat() / totalDurationMs
 
         val nextThreshold = when {
             progress < 0.2f -> 0.2f
@@ -64,6 +83,7 @@ data class PlantInfo(
             else -> return null // Déjà mature
         }
 
-        return ((nextThreshold * totalDurationMs) - elapsed).toLong().coerceAtLeast(0L)
+        val remainingEffectiveMs = (nextThreshold * totalDurationMs) - effectiveElapsed
+        return (remainingEffectiveMs / growthMultiplier).toLong().coerceAtLeast(0L)
     }
 }

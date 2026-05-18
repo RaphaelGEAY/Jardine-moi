@@ -61,7 +61,9 @@ fun PlantListScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (searchQuery.isEmpty()) "Aucune plante enregistrée" else "Aucun résultat trouvé")
+                if (searchQuery.isNotEmpty()) {
+                    Text("Aucun résultat trouvé")
+                }
             }
         } else {
             LazyColumn(

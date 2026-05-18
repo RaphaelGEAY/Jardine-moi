@@ -136,20 +136,48 @@ class PlantRepository {
         val plantId = plant.id.ifEmpty { plant.commonName.filter { it.isLetterOrDigit() } }
         
         return try {
+            val userRef = firestore.collection("users").document(userId)
+            val plantRef = userRef.collection("my_plants").document(plantId)
+            
             val finalPlant = plant.copy(
                 id = plantId,
                 plantedAt = System.currentTimeMillis() // Fixe le début de la croissance en temps réel
             )
-            firestore.collection("users")
-                .document(userId)
-                .collection("my_plants")
-                .document(plantId)
-                .set(finalPlant)
-                .await()
+            
+            firestore.runTransaction { transaction ->
+                // 1. On ajoute la plante
+                transaction.set(plantRef, finalPlant)
+                
+                // 2. On incrémente le compteur global de plantes cultivées (Trophées)
+                transaction.update(userRef, "lifetime_plants_count", com.google.firebase.firestore.FieldValue.increment(1))
+            }.await()
+            
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            // Si l'update échoue parce que le document user n'existe pas, on le crée
+            try {
+                val finalPlant = plant.copy(
+                    id = plantId,
+                    plantedAt = System.currentTimeMillis()
+                )
+                firestore.collection("users").document(userId).set(mapOf("lifetime_plants_count" to 1), com.google.firebase.firestore.SetOptions.merge()).await()
+                firestore.collection("users").document(userId).collection("my_plants").document(plantId).set(finalPlant).await()
+                Result.success(Unit)
+            } catch (e2: Exception) {
+                Result.failure(e2)
+            }
         }
+    }
+
+    // 🔥 Récupération du nombre total de plantes cultivées pour les trophées
+    fun getLifetimePlantsCount(): Flow<Int> = callbackFlow {
+        val userId = auth.currentUser?.uid ?: return@callbackFlow
+        val listener = firestore.collection("users").document(userId)
+            .addSnapshotListener { snapshot, _ ->
+                val count = snapshot?.getLong("lifetime_plants_count")?.toInt() ?: 0
+                trySend(count)
+            }
+        awaitClose { listener.remove() }
     }
 
     suspend fun searchPlantsOnline(query: String): List<PlantInfo> {
@@ -223,21 +251,39 @@ class PlantRepository {
         }
     }
 
-    // 🔥 Marquer une plante comme arrosée
+    // 🔥 Marquer une plante comme arrosée (+10 pts)
     suspend fun waterPlant(plantId: String): Result<Unit> {
         val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Non connecté"))
+        val userRef = firestore.collection("users").document(userId)
+        val plantRef = userRef.collection("my_plants").document(plantId)
+        
         return try {
-            val docRef = firestore.collection("users").document(userId)
-                .collection("my_plants").document(plantId)
-            
-            docRef.update("lastWateredDate", System.currentTimeMillis()).await()
+            firestore.runTransaction { transaction ->
+                // 1. Update de la plante (Date + Points individuels)
+                transaction.update(plantRef, "lastWateredDate", System.currentTimeMillis())
+                transaction.update(plantRef, "carePoints", com.google.firebase.firestore.FieldValue.increment(10))
+                
+                // 2. Update du score global du compte (pour le Niveau de Jardinier)
+                transaction.update(userRef, "total_care_points", com.google.firebase.firestore.FieldValue.increment(10))
+            }.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // 🔥 Debug : Accélérer la croissance (avance l'horloge de 1 heure)
+    // 🔥 Récupération du score global pour le niveau
+    fun getTotalCarePoints(): Flow<Int> = callbackFlow {
+        val userId = auth.currentUser?.uid ?: return@callbackFlow
+        val listener = firestore.collection("users").document(userId)
+            .addSnapshotListener { snapshot, _ ->
+                val points = snapshot?.getLong("total_care_points")?.toInt() ?: 0
+                trySend(points)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    // 🔥 Debug : Accélérer la croissance (Saut direct au prochain stade)
     suspend fun debugAccelerateGrowth(plantId: String): Result<Unit> {
         val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Non connecté"))
         return try {
@@ -245,11 +291,19 @@ class PlantRepository {
                 .collection("my_plants").document(plantId)
             
             val doc = docRef.get().await()
-            val currentPlantedAt = doc.getLong("plantedAt") ?: System.currentTimeMillis()
+            val plant = doc.toObject(PlantInfo::class.java) ?: return Result.failure(Exception("Plante introuvable"))
             
-            // On recule la date de plantation d'une heure pour simuler le temps qui passe
-            docRef.update("plantedAt", currentPlantedAt - (1000 * 60 * 60)).await()
-            Result.success(Unit)
+            // On récupère le temps restant avant le prochain stade
+            val timeToNext = plant.calculateTimeToNextStageMs(System.currentTimeMillis())
+            
+            if (timeToNext != null) {
+                // On recule la date de plantation du temps restant + 1 seconde pour être sûr de passer le seuil
+                val newPlantedAt = plant.plantedAt - (timeToNext + 1000)
+                docRef.update("plantedAt", newPlantedAt).await()
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Déjà au stade maximum"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

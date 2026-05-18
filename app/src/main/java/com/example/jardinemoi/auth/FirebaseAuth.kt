@@ -27,6 +27,11 @@ class AuthViewModel : ViewModel() {
     }
 
     fun login(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            _uiState.value = AuthUiState(error = "Veuillez remplir tous les champs.")
+            return
+        }
+
         _uiState.value = AuthUiState(isLoading = true)
 
         viewModelScope.launch {
@@ -38,6 +43,11 @@ class AuthViewModel : ViewModel() {
     }
 
     fun register(email: String, password: String, onSuccess: (FirebaseUser) -> Unit, onError: (String) -> Unit) {
+        if (email.isBlank() || password.isBlank()) {
+            _uiState.value = AuthUiState(error = "Veuillez remplir tous les champs.")
+            return
+        }
+
         _uiState.value = AuthUiState(isLoading = true)
         viewModelScope.launch {
             when (val result = AuthRepository.register(email, password)) {
@@ -55,6 +65,10 @@ class AuthViewModel : ViewModel() {
 
     fun logout() {
         auth.signOut()
+    }
+
+    fun setError(message: String?) {
+        _uiState.value = _uiState.value.copy(error = message)
     }
 
     fun currentUser() = auth.currentUser

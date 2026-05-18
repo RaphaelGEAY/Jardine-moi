@@ -192,7 +192,6 @@ fun GlobalAppRoot() {
                 composable("account") {
                     AccountScreen(
                         viewModel = viewModel,
-                        gameState = gardenGameState,
                         onLogout = { viewModel.logout() }
                     )
                 }
@@ -253,7 +252,6 @@ fun GlobalAppRoot() {
                             },
                             onBack = { navController.popBackStack() },
                             onUpdatePotType = { detailViewModel.updatePotType(it) },
-                            onUpdateSeason = { detailViewModel.updateSeason(it) },
                             onDebugAccelerate = { detailViewModel.debugAccelerateGrowth() }
                         )
                     } else {

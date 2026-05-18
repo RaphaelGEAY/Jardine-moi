@@ -14,6 +14,7 @@ data class GardenSaveData(
     val rainTotems: Int = 1,
     val totalHarvests: Int = 0,
     val totalWaterings: Int = 0,
+    val totalPlantsPlanted: Int = 0,
     val slots: List<GardenSlotData> = emptyList(),
     val inventory: Map<String, Int> = emptyMap(),
     val upgrades: Map<String, Int> = emptyMap(),

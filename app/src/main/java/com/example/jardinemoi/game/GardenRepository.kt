@@ -30,6 +30,7 @@ object GardenRepository {
             rainTotems = state.rainTotems,
             totalHarvests = state.totalHarvests,
             totalWaterings = state.totalWaterings,
+            totalPlantsPlanted = state.totalPlantsPlanted,
             slots = state.gardenSlots.map { slot ->
                 GardenSlotData(
                     id = slot.id,
