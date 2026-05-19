@@ -70,13 +70,18 @@ fun GlobalAppRoot() {
 
     // 🔥 Navigation automatique selon l'état Firebase
     LaunchedEffect(isAuthenticated) {
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
         if (isAuthenticated) {
-            navController.navigate("main") {
-                popUpTo(0)
+            if (currentRoute != "main" && currentRoute != "home") {
+                navController.navigate("main") {
+                    popUpTo(0)
+                }
             }
         } else {
-            navController.navigate("auth") {
-                popUpTo(0)
+            if (currentRoute != "auth" && currentRoute != "login") {
+                navController.navigate("auth") {
+                    popUpTo(0)
+                }
             }
         }
     }
