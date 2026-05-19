@@ -22,11 +22,21 @@ import kotlinx.coroutines.delay
 fun GardenGameScreen(gameState: GardenGameState) {
     var selectedMenu by remember { mutableStateOf(GardenMenuSheet.SEEDS) }
 
+    val backgroundColor by remember(gameState.currentWeather) {
+        mutableStateOf(androidx.compose.ui.graphics.lerp(GardenPanelSoft, gameState.currentWeather.tint, 0.15f))
+    }
+    
+    val sheetColor by remember(gameState.currentWeather) {
+        mutableStateOf(androidx.compose.ui.graphics.lerp(GardenPanel, gameState.currentWeather.tint, 0.08f))
+    }
+
     LaunchedEffect(gameState) {
         while (true) {
             try {
                 delay(1000)
                 gameState.advanceGameTick()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e // Obligatoire pour laisser la coroutine s'arrêter proprement
             } catch (e: Exception) {
                 android.util.Log.e("GardenGame", "Erreur tick: ${e.message}")
             }
@@ -36,10 +46,10 @@ fun GardenGameScreen(gameState: GardenGameState) {
     BottomSheetScaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(androidx.compose.ui.graphics.lerp(GardenPanelSoft, gameState.currentWeather.tint, 0.15f))
+            .background(backgroundColor)
             .statusBarsPadding(),
         sheetPeekHeight = 92.dp,
-        sheetContainerColor = androidx.compose.ui.graphics.lerp(GardenPanel, gameState.currentWeather.tint, 0.08f),
+        sheetContainerColor = sheetColor,
         sheetShadowElevation = 10.dp,
         sheetDragHandle = {
             BottomSheetDefaults.DragHandle(

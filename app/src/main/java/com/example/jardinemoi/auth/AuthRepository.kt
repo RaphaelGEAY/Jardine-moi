@@ -2,7 +2,10 @@ package com.example.jardinemoi.auth
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 sealed class AuthResult {
     data class Success(val user: FirebaseUser) : AuthResult()
@@ -12,9 +15,10 @@ sealed class AuthResult {
 object AuthRepository {
 
     private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
 
-    suspend fun login(email: String, password: String): AuthResult {
-        return try {
+    suspend fun login(email: String, password: String): AuthResult = withContext(Dispatchers.IO) {
+        try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
             val user = result.user
             if (user != null) {
@@ -38,8 +42,8 @@ object AuthRepository {
         }
     }
 
-    suspend fun register(email: String, password: String): AuthResult {
-        return try {
+    suspend fun register(email: String, password: String): AuthResult = withContext(Dispatchers.IO) {
+        try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
             if (user != null) {
@@ -57,6 +61,20 @@ object AuthRepository {
             AuthResult.Error(message)
         } catch (e: Exception) {
             AuthResult.Error(e.message ?: "Erreur d'inscription")
+        }
+    }
+
+    suspend fun createUserProfile(uid: String, name: String, email: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val userData = mapOf(
+                "name" to name,
+                "email" to email,
+                "createdAt" to System.currentTimeMillis()
+            )
+            firestore.collection("users").document(uid).set(userData).await()
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 

@@ -15,6 +15,7 @@ import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 
 class PlantDetailViewModel(
     private val repository: PlantRepository = PlantRepository()
@@ -40,6 +41,7 @@ class PlantDetailViewModel(
     private val _extractedColors = MutableStateFlow<List<Color>>(listOf(Color(0xFF4CAF50), Color(0xFF8BC34A)))
     val extractedColors: StateFlow<List<Color>> = _extractedColors
 
+    private var loadJob: Job? = null
     private var isOwnedLocal: Boolean = false
 
     fun loadPlant(id: String, isOwned: Boolean = false, context: Context? = null) {
@@ -48,8 +50,9 @@ class PlantDetailViewModel(
         
         this.isOwnedLocal = isOwned
         _plant.value = null
+        loadJob?.cancel()
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             val ownedPlant = repository.getMyPlantById(id)
             if (ownedPlant != null) {
                 _plant.value = ownedPlant
@@ -68,10 +71,11 @@ class PlantDetailViewModel(
 
     private fun extractColorsFromImage(context: Context, imageUrl: String) {
         if (imageUrl.isEmpty()) return
+        val appContext = context.applicationContext
 
         viewModelScope.launch {
-            val loader = ImageLoader(context)
-            val request = ImageRequest.Builder(context)
+            val loader = ImageLoader(appContext)
+            val request = ImageRequest.Builder(appContext)
                 .data(imageUrl)
                 .allowHardware(false) // Nécessaire pour extraire le bitmap
                 .build()

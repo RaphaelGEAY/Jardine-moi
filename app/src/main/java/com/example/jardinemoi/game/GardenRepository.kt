@@ -5,7 +5,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 object GardenRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -15,11 +17,11 @@ object GardenRepository {
         db.collection("users").document(uid).collection("game").document("state")
     }
 
-    suspend fun saveGame(state: GardenGameState): Boolean {
+    suspend fun saveGame(state: GardenGameState): Boolean = withContext(Dispatchers.IO) {
         val doc = getUserDoc()
         if (doc == null) {
             Log.e("GardenRepo", "ERREUR: Utilisateur non connecté, impossible de sauvegarder")
-            return false
+            return@withContext false
         }
         
         val saveData = GardenSaveData(
@@ -53,16 +55,16 @@ object GardenRepository {
         try {
             doc.set(saveData, SetOptions.merge()).await()
             Log.d("GardenRepo", "✅ Sauvegarde réussie pour: ${auth.currentUser?.email}")
-            return true
+            true
         } catch (e: Exception) {
             Log.e("GardenRepo", "❌ ÉCHEC de sauvegarde: ${e.message}")
-            return false
+            false
         }
     }
 
-    suspend fun loadGame(): GardenSaveData? {
-        val doc = getUserDoc() ?: return null
-        return try {
+    suspend fun loadGame(): GardenSaveData? = withContext(Dispatchers.IO) {
+        val doc = getUserDoc() ?: return@withContext null
+        try {
             val snapshot = try {
                 doc.get(Source.SERVER).await()
             } catch (serverError: Exception) {

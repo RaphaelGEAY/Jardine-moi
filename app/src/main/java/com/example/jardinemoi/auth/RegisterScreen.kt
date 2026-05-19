@@ -69,6 +69,7 @@ fun RegisterScreen(
                     viewModel.setError("Veuillez remplir tous les champs.")
                 } else {
                     viewModel.register(
+                        name = name,
                         email = email, 
                         password = password,
                         onSuccess = { user -> onRegisterSuccess(user, name, email) },

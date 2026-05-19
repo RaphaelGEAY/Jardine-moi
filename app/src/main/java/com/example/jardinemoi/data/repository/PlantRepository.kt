@@ -4,10 +4,12 @@ import com.example.jardinemoi.data.model.PlantInfo
 import com.example.jardinemoi.data.trefle.TrefleClient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class PlantRepository {
 
@@ -32,13 +34,13 @@ class PlantRepository {
     }
 
     // 🔥 Récupération d’une plante par son identifiant unique
-    suspend fun getPlantById(id: String): PlantInfo? {
+    suspend fun getPlantById(id: String): PlantInfo? = withContext(Dispatchers.IO) {
         // 1. On cherche d'abord dans notre catalogue local (Firestore) par ID de document
         try {
             val doc = firestore.collection("plants_info").document(id).get().await()
             if (doc.exists()) {
                 val plant = doc.toObject(PlantInfo::class.java)
-                return plant?.copy(id = doc.id)
+                return@withContext plant?.copy(id = doc.id)
             }
         } catch (e: Exception) {}
 
@@ -50,7 +52,7 @@ class PlantRepository {
                 .await()
             if (!snapshot.isEmpty) {
                 val doc = snapshot.documents.first()
-                return doc.toObject(PlantInfo::class.java)?.copy(id = doc.id)
+                return@withContext doc.toObject(PlantInfo::class.java)?.copy(id = doc.id)
             }
         } catch (e: Exception) {}
 
@@ -62,17 +64,17 @@ class PlantRepository {
                 .await()
             if (!snapshot.isEmpty) {
                 val doc = snapshot.documents.first()
-                return doc.toObject(PlantInfo::class.java)?.copy(id = doc.id)
+                return@withContext doc.toObject(PlantInfo::class.java)?.copy(id = doc.id)
             }
         } catch (e: Exception) {}
 
         // 4. Si c'est un ID numérique, on cherche sur Trefle (en ligne)
         if (id.all { it.isDigit() }) {
-            return try {
+            try {
                 val response = trefleApi.getPlant(id, trefleToken)
                 val detail = response.data
                 val species = detail.main_species
-                PlantInfo(
+                return@withContext PlantInfo(
                     id = detail.id.toString(),
                     commonName = detail.common_name ?: detail.scientific_name,
                     species = detail.scientific_name,
@@ -88,11 +90,11 @@ class PlantRepository {
                     wateringFrequencyDays = calculateWateringFrequency(detail.common_name, detail.scientific_name, species?.growth)
                 )
             } catch (e: Exception) {
-                null
+                return@withContext null
             }
         }
         
-        return null
+        null
     }
 
     private fun calculateWateringFrequency(commonName: String?, scientificName: String?, growth: com.example.jardinemoi.data.trefle.TrefleGrowth?): Int {
@@ -131,11 +133,11 @@ class PlantRepository {
         return (base + variation).coerceIn(1, 21)
     }
 
-    suspend fun addToMyPlants(plant: PlantInfo): Result<Unit> {
-        val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Utilisateur non connecté"))
+    suspend fun addToMyPlants(plant: PlantInfo): Result<Unit> = withContext(Dispatchers.IO) {
+        val userId = auth.currentUser?.uid ?: return@withContext Result.failure(Exception("Utilisateur non connecté"))
         val plantId = plant.id.ifEmpty { plant.commonName.filter { it.isLetterOrDigit() } }
         
-        return try {
+        try {
             val userRef = firestore.collection("users").document(userId)
             val plantRef = userRef.collection("my_plants").document(plantId)
             
@@ -180,8 +182,8 @@ class PlantRepository {
         awaitClose { listener.remove() }
     }
 
-    suspend fun searchPlantsOnline(query: String): List<PlantInfo> {
-        return try {
+    suspend fun searchPlantsOnline(query: String): List<PlantInfo> = withContext(Dispatchers.IO) {
+        try {
             val response = trefleApi.searchPlants(trefleToken, query)
             response.data.map { treflePlant ->
                 PlantInfo(
@@ -220,9 +222,9 @@ class PlantRepository {
     }
 
     // Récupérer une plante spécifiquement dans MA liste
-    suspend fun getMyPlantById(plantId: String): PlantInfo? {
-        val userId = auth.currentUser?.uid ?: return null
-        return try {
+    suspend fun getMyPlantById(plantId: String): PlantInfo? = withContext(Dispatchers.IO) {
+        val userId = auth.currentUser?.uid ?: return@withContext null
+        try {
             val doc = firestore.collection("users")
                 .document(userId)
                 .collection("my_plants")
@@ -252,12 +254,12 @@ class PlantRepository {
     }
 
     // 🔥 Marquer une plante comme arrosée (+10 pts)
-    suspend fun waterPlant(plantId: String): Result<Unit> {
-        val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Non connecté"))
+    suspend fun waterPlant(plantId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val userId = auth.currentUser?.uid ?: return@withContext Result.failure(Exception("Non connecté"))
         val userRef = firestore.collection("users").document(userId)
         val plantRef = userRef.collection("my_plants").document(plantId)
         
-        return try {
+        try {
             firestore.runTransaction { transaction ->
                 // 1. Update de la plante (Date + Points individuels)
                 transaction.update(plantRef, "lastWateredDate", System.currentTimeMillis())
@@ -284,14 +286,14 @@ class PlantRepository {
     }
 
     // 🔥 Debug : Accélérer la croissance (Saut direct au prochain stade)
-    suspend fun debugAccelerateGrowth(plantId: String): Result<Unit> {
-        val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Non connecté"))
-        return try {
+    suspend fun debugAccelerateGrowth(plantId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val userId = auth.currentUser?.uid ?: return@withContext Result.failure(Exception("Non connecté"))
+        try {
             val docRef = firestore.collection("users").document(userId)
                 .collection("my_plants").document(plantId)
             
             val doc = docRef.get().await()
-            val plant = doc.toObject(PlantInfo::class.java) ?: return Result.failure(Exception("Plante introuvable"))
+            val plant = doc.toObject(PlantInfo::class.java) ?: return@withContext Result.failure(Exception("Plante introuvable"))
             
             // On récupère le temps restant avant le prochain stade
             val timeToNext = plant.calculateTimeToNextStageMs(System.currentTimeMillis())
@@ -309,11 +311,11 @@ class PlantRepository {
         }
     }
 
-    suspend fun removeFromMyPlants(plantId: String): Result<Unit> {
-        val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Utilisateur non connecté"))
-        if (plantId.isEmpty()) return Result.failure(Exception("ID de plante invalide"))
+    suspend fun removeFromMyPlants(plantId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val userId = auth.currentUser?.uid ?: return@withContext Result.failure(Exception("Utilisateur non connecté"))
+        if (plantId.isEmpty()) return@withContext Result.failure(Exception("ID de plante invalide"))
 
-        return try {
+        try {
             firestore.collection("users")
                 .document(userId)
                 .collection("my_plants")
@@ -327,9 +329,9 @@ class PlantRepository {
     }
 
     // Fonction de secours pour tout nettoyer en cas de bug d'ID
-    suspend fun deleteAllMyPlants(): Result<Unit> {
-        val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Non connecté"))
-        return try {
+    suspend fun deleteAllMyPlants(): Result<Unit> = withContext(Dispatchers.IO) {
+        val userId = auth.currentUser?.uid ?: return@withContext Result.failure(Exception("Non connecté"))
+        try {
             val colRef = firestore.collection("users").document(userId).collection("my_plants")
             val snapshot = colRef.get().await()
             for (doc in snapshot.documents) {
