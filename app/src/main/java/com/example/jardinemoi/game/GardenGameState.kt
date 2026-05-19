@@ -221,7 +221,8 @@ class GardenGameState {
     }
 
     private fun triggerSave() {
-        scope.launch {
+        // On utilise Dispatchers.IO pour ne pas bloquer l'interface (le Main thread)
+        CoroutineScope(Dispatchers.IO).launch {
             persistCurrentState()
         }
     }
@@ -385,9 +386,8 @@ class GardenGameState {
             triggerSave()
         }
 
-        if (ticks % 20 == 0) {
-            triggerSave()
-        }
+        // On ne sauvegarde plus automatiquement toutes les 20 secondes pour éviter les freezes
+        // if (ticks % 20 == 0) { triggerSave() }
     }
 
     fun selectScreen(screen: GameScreen) {

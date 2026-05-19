@@ -24,12 +24,13 @@ class PlantDetailViewModel(
     val plant: StateFlow<PlantInfo?> = _plant
 
     init {
-        // Ticker temps réel pour la croissance
+        // Ticker temps réel pour la croissance : on réduit la fréquence à 5 secondes
+        // car la croissance n'est pas visible à la seconde près.
         viewModelScope.launch {
             while (true) {
-                delay(1000)
-                // On met à jour l'état uniquement si une plante est chargée
+                delay(5000)
                 _plant.value?.let { current ->
+                    // On ne force la mise à jour que si on est sur l'écran
                     _plant.value = current.copy()
                 }
             }
