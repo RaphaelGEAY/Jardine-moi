@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jardine moi - Installation</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2E7D32;
+            --bg-color: #F1F8E9;
+            --text-color: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 90%;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 1rem;
+        }
+        h1 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        p {
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+        .btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: transform 0.2s, background-color 0.2s;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        .btn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .instructions {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: #666;
+            text-align: left;
+        }
+        .instructions h3 {
+            margin-bottom: 0.5rem;
+            color: var(--secondary-color);
+        }
+        .step {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🌿</div>
+        <h1>Jardine moi</h1>
+        <p>Votre compagnon de jardinage intelligent.</p>
+
+        <a href="app-release.apk" class="btn">Télécharger l'APK</a>
+
+        <div class="instructions">
+            <h3>Comment installer ?</h3>
+            <div class="step">1. Téléchargez le fichier APK ci-dessus.</div>
+            <div class="step">2. Ouvrez le fichier téléchargé sur votre Android.</div>
+            <div class="step">3. Si Android vous avertit, autorisez l'installation depuis cette source (votre navigateur).</div>
+            <div class="step">4. Suivez les instructions à l'écran pour terminer l'installation.</div>
+        </div>
+    </div>
+</body>
+</html>

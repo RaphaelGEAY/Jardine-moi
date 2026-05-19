@@ -30,6 +30,7 @@ data class GardenSlotData(
     val water: Float = 0.7f,
     val fertilizer: Float = 0f,
     val starvationSeconds: Long = 0L,
+    // Les champs suivants sont cruciaux pour la synchronisation
     val plantedAt: Long = 0L,
     val lastUpdatedAt: Long = 0L
 )

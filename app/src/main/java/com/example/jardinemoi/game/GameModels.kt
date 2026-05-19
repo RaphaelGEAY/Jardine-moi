@@ -150,6 +150,7 @@ data class ActivityEntry(
     val accent: Color
 )
 
+// Modèle principal pour une parcelle du jardin
 data class GardenSlot(
     val id: Int,
     val isUnlocked: Boolean,

@@ -278,7 +278,7 @@ class GardenGameState {
     suspend fun loadFromFirebase() {
         Log.d("GardenGame", "Tentative de récupération de la sauvegarde...")
         val data = GardenRepository.loadGame()
-        
+
         if (data != null) {
             // Mise à jour des stats principales
             coins = data.coins
@@ -290,12 +290,12 @@ class GardenGameState {
             totalHarvests = data.totalHarvests
             totalWaterings = data.totalWaterings
             totalPlantsPlanted = data.totalPlantsPlanted
-            
+
             // Calcul du temps écoulé depuis la dernière fermeture
             val currentTime = System.currentTimeMillis()
             val elapsedMillis = currentTime - data.lastUpdate
             val elapsedSeconds = (elapsedMillis / 1000)
-            
+
             // Restauration des parcelles avec calcul de la croissance hors-ligne
             if (data.slots.isNotEmpty()) {
                 data.slots.forEach { savedSlot ->
@@ -324,11 +324,11 @@ class GardenGameState {
                     }
                 }
             }
-            
+
             data.inventory.forEach { (name, qty) ->
                 try { produceInventory[PlantType.valueOf(name)] = qty } catch(e: Exception) {}
             }
-            
+
             data.upgrades.forEach { (name, lv) ->
                 try { upgrades[UpgradeType.valueOf(name)] = lv } catch(e: Exception) {}
             }
@@ -346,7 +346,7 @@ class GardenGameState {
             }
             Log.d("GardenGame", "Réparation : 6 parcelles ont été déverrouillées.")
         }
-        
+
         isInitializationComplete = true
         addLog("☁️", "Jardin synchronisé", "Vos données sont prêtes.", GardenMint)
     }

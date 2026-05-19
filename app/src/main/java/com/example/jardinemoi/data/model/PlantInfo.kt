@@ -12,6 +12,8 @@ data class PlantInfo(
     val category: String = "Plante",
     
     // Paramètres de soin
+    @get:com.google.firebase.firestore.PropertyName("wateringFrequencyDays")
+    @set:com.google.firebase.firestore.PropertyName("wateringFrequencyDays")
     var wateringFrequencyDays: Int = 7,
     val exposure: String = "Mi-ombre",
     val potType: String = "Plastique",
