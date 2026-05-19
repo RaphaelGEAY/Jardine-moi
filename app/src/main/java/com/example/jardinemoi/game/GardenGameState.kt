@@ -299,7 +299,8 @@ class GardenGameState {
             // Restauration des parcelles avec calcul de la croissance hors-ligne
             if (data.slots.isNotEmpty()) {
                 data.slots.forEach { savedSlot ->
-                    if (savedSlot.id in gardenSlots.indices) {
+                    // On vérifie que l'ID est valide pour éviter un IndexOutOfBoundsException (Crash)
+                    if (savedSlot.id >= 0 && savedSlot.id < gardenSlots.size) {
                         val plant = resolveSavedPlant(savedSlot)
                         val slotLastUpdatedAt = resolveSlotLastUpdatedAt(savedSlot, data.lastUpdate, currentTime)
                         val plantedAt = resolveSlotPlantedAt(savedSlot, plant, currentTime, slotLastUpdatedAt)

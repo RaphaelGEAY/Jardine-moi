@@ -24,8 +24,12 @@ fun GardenGameScreen(gameState: GardenGameState) {
 
     LaunchedEffect(gameState) {
         while (true) {
-            delay(1000)
-            gameState.advanceGameTick()
+            try {
+                delay(1000)
+                gameState.advanceGameTick()
+            } catch (e: Exception) {
+                android.util.Log.e("GardenGame", "Erreur tick: ${e.message}")
+            }
         }
     }
 
