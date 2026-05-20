@@ -231,14 +231,6 @@ fun SummarySection(thirstyCount: Int, readyCount: Int) {
                 modifier = Modifier.weight(1f)
             )
         }
-        if (thirstyCount == 0 && readyCount == 0) {
-            SummaryChip(
-                text = "Jardin au top !",
-                icon = "✅",
-                color = Color(0xFF81C784),
-                modifier = Modifier.weight(1f)
-            )
-        }
     }
 }
 

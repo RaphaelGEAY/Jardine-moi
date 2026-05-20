@@ -440,7 +440,7 @@ fun PlantInfoContent(
             Button(onClick = onAddToMyPlants, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Ajouter & Planifier l'arrosage")
+                Text("Ajouter")
             }
         } else {
             Button(onClick = onWaterPlant, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)) {
