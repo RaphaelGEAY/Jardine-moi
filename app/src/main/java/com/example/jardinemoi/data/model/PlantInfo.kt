@@ -27,10 +27,7 @@ data class PlantInfo(
     @get:PropertyName("completed") @set:PropertyName("completed") var completed: Boolean = false
 ) {
     // Fallback pour une éventuelle erreur de frappe dans la DB (espace à la fin)
-    @get:PropertyName("wateringFrequencyDays ") @set:PropertyName("wateringFrequencyDays ")
-    var wateringFrequencyDaysFallback: Int
-        @Exclude get() = wateringFrequencyDays
-        set(value) { wateringFrequencyDays = value }
+    // Note : Supprimé car inutile si Firebase est corrigé ou si le mapping est géré différemment.
 
     // Calcul dynamique du stade et du progrès en temps réel
     @get:Exclude
