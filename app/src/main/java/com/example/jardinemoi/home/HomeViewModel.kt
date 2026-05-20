@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jardinemoi.data.model.PlantInfo
 import com.example.jardinemoi.data.repository.PlantRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
@@ -22,13 +24,16 @@ class HomeViewModel(
     private val _totalCarePoints = MutableStateFlow(0)
     val totalCarePointsState: StateFlow<Int> = _totalCarePoints
 
+    private var myPlantsJob: Job? = null
+    private var carePointsJob: Job? = null
+
     init {
-        viewModelScope.launch {
+        myPlantsJob = viewModelScope.launch {
             repository.getMyPlants().collectLatest { list ->
                 _myPlants.value = list
             }
         }
-        viewModelScope.launch {
+        carePointsJob = viewModelScope.launch {
             repository.getTotalCarePoints().collectLatest { points ->
                 _totalCarePoints.value = points
             }
@@ -38,7 +43,9 @@ class HomeViewModel(
 
     private fun loadPlantOfTheDay() {
         viewModelScope.launch {
-            repository.getAllPlants().collectLatest { allPlants ->
+            // On prend la première liste non vide pour éviter les changements intempestifs
+            val allPlants = repository.getAllPlants().firstOrNull { it.isNotEmpty() }
+            if (allPlants != null) {
                 val filteredPlants = allPlants.filter { it.commonName != "Monstera" }
                 if (filteredPlants.isNotEmpty()) {
                     _plantOfTheDay.value = filteredPlants.random()

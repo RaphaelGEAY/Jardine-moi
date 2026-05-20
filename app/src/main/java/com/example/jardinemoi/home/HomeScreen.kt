@@ -22,14 +22,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.jardinemoi.auth.AuthRepository
-import com.example.jardinemoi.auth.AuthViewModel
 import com.example.jardinemoi.data.model.PlantInfo
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun HomeScreen(
-    authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel = viewModel(),
     onAddPlant: () -> Unit,
     onPlantClick: (PlantInfo) -> Unit

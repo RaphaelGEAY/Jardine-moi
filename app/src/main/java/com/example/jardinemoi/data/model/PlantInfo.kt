@@ -1,27 +1,37 @@
 package com.example.jardinemoi.data.model
 
 import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.PropertyName
+import androidx.annotation.Keep
 
+@Keep
 data class PlantInfo(
-    val id: String = "",
-    val species: String = "",
-    val commonName: String = "",
-    val imageUrl: String = "",
-    val family: String = "",
-    val genus: String = "",
-    val category: String = "Plante",
+    @get:PropertyName("id") @set:PropertyName("id") var id: String = "",
+    @get:PropertyName("species") @set:PropertyName("species") var species: String = "",
+    @get:PropertyName("commonName") @set:PropertyName("commonName") var commonName: String = "",
+    @get:PropertyName("imageUrl") @set:PropertyName("imageUrl") var imageUrl: String = "",
+    @get:PropertyName("family") @set:PropertyName("family") var family: String = "",
+    @get:PropertyName("genus") @set:PropertyName("genus") var genus: String = "",
+    @get:PropertyName("category") @set:PropertyName("category") var category: String = "Plante",
     
     // Paramètres de soin
-    var wateringFrequencyDays: Int = 7,
-    val exposure: String = "Mi-ombre",
-    val potType: String = "Plastique",
+    @get:PropertyName("wateringFrequencyDays") @set:PropertyName("wateringFrequencyDays") var wateringFrequencyDays: Int = 7,
+    @get:PropertyName("exposure") @set:PropertyName("exposure") var exposure: String = "Mi-ombre",
+    @get:PropertyName("potType") @set:PropertyName("potType") var potType: String = "Plastique",
     
     // Suivi et Gamification
-    val plantedAt: Long = System.currentTimeMillis(),
-    val lastWateredDate: Long = System.currentTimeMillis(),
-    val healthLevel: Int = 100,
-    val carePoints: Int = 0
+    @get:PropertyName("plantedAt") @set:PropertyName("plantedAt") var plantedAt: Long = System.currentTimeMillis(),
+    @get:PropertyName("lastWateredDate") @set:PropertyName("lastWateredDate") var lastWateredDate: Long = System.currentTimeMillis(),
+    @get:PropertyName("healthLevel") @set:PropertyName("healthLevel") var healthLevel: Int = 100,
+    @get:PropertyName("carePoints") @set:PropertyName("carePoints") var carePoints: Int = 0,
+    @get:PropertyName("completed") @set:PropertyName("completed") var completed: Boolean = false
 ) {
+    // Fallback pour une éventuelle erreur de frappe dans la DB (espace à la fin)
+    @get:PropertyName("wateringFrequencyDays ") @set:PropertyName("wateringFrequencyDays ")
+    var wateringFrequencyDaysFallback: Int
+        @Exclude get() = wateringFrequencyDays
+        set(value) { wateringFrequencyDays = value }
+
     // Calcul dynamique du stade et du progrès en temps réel
     @get:Exclude
     val currentStage: String
@@ -64,7 +74,7 @@ data class PlantInfo(
     fun calculateGrowthProgress(now: Long): Float {
         val totalDurationMs = (wateringFrequencyDays * 24 * 60 * 60 * 1000L) / 2
         val effectiveElapsed = (now - plantedAt) * growthMultiplier
-        return (effectiveElapsed.toFloat() / totalDurationMs).coerceIn(0f, 1f)
+        return (effectiveElapsed / totalDurationMs).coerceIn(0f, 1f)
     }
 
     @get:Exclude
@@ -74,7 +84,7 @@ data class PlantInfo(
     fun calculateTimeToNextStageMs(now: Long): Long? {
         val totalDurationMs = (wateringFrequencyDays * 24 * 60 * 60 * 1000L) / 2
         val effectiveElapsed = (now - plantedAt) * growthMultiplier
-        val progress = effectiveElapsed.toFloat() / totalDurationMs
+        val progress = effectiveElapsed / totalDurationMs
 
         val nextThreshold = when {
             progress < 0.2f -> 0.2f

@@ -12,9 +12,8 @@ import androidx.compose.runtime.setValue
 
 import android.util.Log
 import androidx.compose.runtime.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 
 @Composable
 fun rememberGardenGameState(userId: String?): GardenGameState {
@@ -30,6 +29,7 @@ fun rememberGardenGameState(userId: String?): GardenGameState {
 }
 
 @Stable
+@OptIn(FlowPreview::class)
 class GardenGameState {
     var coins by mutableIntStateOf(INITIAL_COINS)
         private set
@@ -114,6 +114,13 @@ class GardenGameState {
 
     private var ticks by mutableIntStateOf(0)
 
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private var isInitializationComplete by mutableStateOf(false)
+
+    // Système de sauvegarde robuste avec Flow
+    private val saveRequests = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
+    private val SAVE_DEBOUNCE_MS = 10000L
+
     init {
         activeOrders.addAll(generateOrders(level = level, day = day))
         addLog(
@@ -128,6 +135,20 @@ class GardenGameState {
             detail = currentWeather.description,
             accent = currentWeather.tint
         )
+        setupAutoSave()
+    }
+
+    private fun setupAutoSave() {
+        scope.launch {
+            saveRequests
+                .debounce(SAVE_DEBOUNCE_MS)
+                .collectLatest {
+                    if (isInitializationComplete) {
+                        Log.d("GardenGame", "Lancement de la sauvegarde automatique...")
+                        GardenRepository.saveGame(this@GardenGameState)
+                    }
+                }
+        }
     }
 
     val level: Int
@@ -209,8 +230,11 @@ class GardenGameState {
             )
         }
 
-    private val scope = CoroutineScope(Dispatchers.Main)
-    private var isInitializationComplete by mutableStateOf(false)
+    private fun triggerSave() {
+        scope.launch {
+            saveRequests.emit(Unit)
+        }
+    }
 
     private suspend fun persistCurrentState(): Boolean {
         if (!isInitializationComplete) {
@@ -218,12 +242,6 @@ class GardenGameState {
             return false
         }
         return GardenRepository.saveGame(this@GardenGameState)
-    }
-
-    private fun triggerSave() {
-        scope.launch {
-            persistCurrentState()
-        }
     }
 
     private fun resolveSavedPlant(savedSlot: GardenSlotData): PlantType =
@@ -278,7 +296,7 @@ class GardenGameState {
     suspend fun loadFromFirebase() {
         Log.d("GardenGame", "Tentative de récupération de la sauvegarde...")
         val data = GardenRepository.loadGame()
-        
+
         if (data != null) {
             // Mise à jour des stats principales
             coins = data.coins
@@ -290,16 +308,17 @@ class GardenGameState {
             totalHarvests = data.totalHarvests
             totalWaterings = data.totalWaterings
             totalPlantsPlanted = data.totalPlantsPlanted
-            
+
             // Calcul du temps écoulé depuis la dernière fermeture
             val currentTime = System.currentTimeMillis()
             val elapsedMillis = currentTime - data.lastUpdate
             val elapsedSeconds = (elapsedMillis / 1000)
-            
+
             // Restauration des parcelles avec calcul de la croissance hors-ligne
             if (data.slots.isNotEmpty()) {
                 data.slots.forEach { savedSlot ->
-                    if (savedSlot.id in gardenSlots.indices) {
+                    // On vérifie que l'ID est valide pour éviter un IndexOutOfBoundsException (Crash)
+                    if (savedSlot.id >= 0 && savedSlot.id < gardenSlots.size) {
                         val plant = resolveSavedPlant(savedSlot)
                         val slotLastUpdatedAt = resolveSlotLastUpdatedAt(savedSlot, data.lastUpdate, currentTime)
                         val plantedAt = resolveSlotPlantedAt(savedSlot, plant, currentTime, slotLastUpdatedAt)
@@ -324,13 +343,13 @@ class GardenGameState {
                     }
                 }
             }
-            
+
             data.inventory.forEach { (name, qty) ->
-                try { produceInventory[PlantType.valueOf(name)] = qty } catch(e: Exception) {}
+                try { produceInventory[PlantType.valueOf(name)] = qty } catch(_: Exception) {}
             }
-            
+
             data.upgrades.forEach { (name, lv) ->
-                try { upgrades[UpgradeType.valueOf(name)] = lv } catch(e: Exception) {}
+                try { upgrades[UpgradeType.valueOf(name)] = lv } catch(_: Exception) {}
             }
 
             if (elapsedSeconds > 60) {
@@ -346,7 +365,7 @@ class GardenGameState {
             }
             Log.d("GardenGame", "Réparation : 6 parcelles ont été déverrouillées.")
         }
-        
+
         isInitializationComplete = true
         addLog("☁️", "Jardin synchronisé", "Vos données sont prêtes.", GardenMint)
     }
@@ -360,7 +379,9 @@ class GardenGameState {
     }
 
     fun saveSilently() {
-        triggerSave()
+        scope.launch {
+            persistCurrentState()
+        }
     }
 
     suspend fun saveBeforeLogout() {
@@ -369,22 +390,32 @@ class GardenGameState {
 
     fun advanceGameTick() {
         ticks++
-        // Changement de météo toutes les 40 secondes environ
         if (ticks % (WEATHER_CHANGE_INTERVAL_TICKS * 5) == 0) {
             rotateWeather()
         }
 
-        gardenSlots.indices.forEach { index ->
-            gardenSlots[index] = gardenSlots[index].advance(currentWeather, 1L)
+        // Optimisation : Mise à jour en une seule fois pour éviter les recompositions multiples
+        var changed = false
+        val newSlots = gardenSlots.map { current ->
+            val next = current.advance(currentWeather, 1L)
+            if (current !== next) {
+                changed = true
+                next
+            } else {
+                current
+            }
         }
 
-        // Un nouveau jour toutes les 10 minutes environ pour le cycle visuel
+        if (changed) {
+            for (i in gardenSlots.indices) {
+                if (gardenSlots[i] !== newSlots[i]) {
+                    gardenSlots[i] = newSlots[i]
+                }
+            }
+        }
+
         if (ticks % (DAY_LENGTH_TICKS * 25) == 0) {
             startNewDay()
-            triggerSave()
-        }
-
-        if (ticks % 20 == 0) {
             triggerSave()
         }
     }

@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <queries>
         <package android:name="com.google.android.gms" />
@@ -10,9 +11,22 @@
         <intent>
             <action android:name="com.google.android.gms.auth.service.START" />
         </intent>
+        <intent>
+            <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.gms.common.api.GoogleApiActivity" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.gms.auth.api.signin.SERVICE_CONFIG_UPDATED" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.gms.auth.api.phone.SMS_RETRIEVED" />
+        </intent>
     </queries>
 
     <application
+        android:name=".JardineMoiApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -23,6 +37,7 @@
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="33"
         android:theme="@style/Theme.JardineMoi">
+
         <activity
             android:name=".global.GlobalAppActivity"
             android:exported="true"

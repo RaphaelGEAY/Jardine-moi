@@ -15,6 +15,7 @@ import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 
 class PlantDetailViewModel(
     private val repository: PlantRepository = PlantRepository()
@@ -24,12 +25,13 @@ class PlantDetailViewModel(
     val plant: StateFlow<PlantInfo?> = _plant
 
     init {
-        // Ticker temps réel pour la croissance
+        // Ticker temps réel pour la croissance : on réduit la fréquence à 5 secondes
+        // car la croissance n'est pas visible à la seconde près.
         viewModelScope.launch {
             while (true) {
-                delay(1000)
-                // On met à jour l'état uniquement si une plante est chargée
+                delay(5000)
                 _plant.value?.let { current ->
+                    // On ne force la mise à jour que si on est sur l'écran
                     _plant.value = current.copy()
                 }
             }
@@ -39,6 +41,7 @@ class PlantDetailViewModel(
     private val _extractedColors = MutableStateFlow<List<Color>>(listOf(Color(0xFF4CAF50), Color(0xFF8BC34A)))
     val extractedColors: StateFlow<List<Color>> = _extractedColors
 
+    private var loadJob: Job? = null
     private var isOwnedLocal: Boolean = false
 
     fun loadPlant(id: String, isOwned: Boolean = false, context: Context? = null) {
@@ -47,8 +50,9 @@ class PlantDetailViewModel(
         
         this.isOwnedLocal = isOwned
         _plant.value = null
+        loadJob?.cancel()
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             val ownedPlant = repository.getMyPlantById(id)
             if (ownedPlant != null) {
                 _plant.value = ownedPlant
@@ -67,10 +71,11 @@ class PlantDetailViewModel(
 
     private fun extractColorsFromImage(context: Context, imageUrl: String) {
         if (imageUrl.isEmpty()) return
+        val appContext = context.applicationContext
 
         viewModelScope.launch {
-            val loader = ImageLoader(context)
-            val request = ImageRequest.Builder(context)
+            val loader = ImageLoader(appContext)
+            val request = ImageRequest.Builder(appContext)
                 .data(imageUrl)
                 .allowHardware(false) // Nécessaire pour extraire le bitmap
                 .build()
@@ -125,6 +130,10 @@ class PlantDetailViewModel(
             val updatedPlant = repository.getMyPlantById(current.id)
             if (updatedPlant != null) {
                 _plant.value = updatedPlant
+                // Si la plante atteint Mature, la marquer comme complétée
+                if (updatedPlant.currentStage == "Mature") {
+                    repository.markPlantAsCompleted(current.id)
+                }
             }
         }
     }
@@ -137,6 +146,10 @@ class PlantDetailViewModel(
             val updated = repository.getMyPlantById(current.id)
             if (updated != null) {
                 _plant.value = updated
+                // Si la plante atteint Mature, la marquer comme complétée
+                if (updated.currentStage == "Mature") {
+                    repository.markPlantAsCompleted(current.id)
+                }
             }
         }
     }

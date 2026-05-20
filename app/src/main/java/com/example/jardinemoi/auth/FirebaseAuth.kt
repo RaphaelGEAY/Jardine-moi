@@ -10,9 +10,9 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
 
-    private val auth = FirebaseAuth.getInstance()
+    private val auth by lazy { FirebaseAuth.getInstance() }
 
-    private val _isAuthenticated = MutableStateFlow(auth.currentUser != null)
+    private val _isAuthenticated = MutableStateFlow(false)
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -23,10 +23,14 @@ class AuthViewModel : ViewModel() {
     }
 
     init {
+        // Initialiser l'état d'authentification de manière sécurisée
+        _isAuthenticated.value = auth.currentUser != null
         auth.addAuthStateListener(authListener)
     }
 
     fun login(email: String, password: String) {
+        if (_uiState.value.isLoading) return
+        
         if (email.isBlank() || password.isBlank()) {
             _uiState.value = AuthUiState(error = "Veuillez remplir tous les champs.")
             return
@@ -35,25 +39,39 @@ class AuthViewModel : ViewModel() {
         _uiState.value = AuthUiState(isLoading = true)
 
         viewModelScope.launch {
-            when (val result = AuthRepository.login(email, password)) {
-                is AuthResult.Success -> _uiState.value = AuthUiState(isSuccess = true)
-                is AuthResult.Error -> _uiState.value = AuthUiState(error = result.message)
+            val result = AuthRepository.login(email, password)
+            when (result) {
+                is AuthResult.Success -> {
+                    _uiState.value = AuthUiState(isSuccess = true)
+                }
+                is AuthResult.Error -> {
+                    _uiState.value = AuthUiState(error = result.message)
+                }
             }
         }
     }
 
-    fun register(email: String, password: String, onSuccess: (FirebaseUser) -> Unit, onError: (String) -> Unit) {
-        if (email.isBlank() || password.isBlank()) {
+    fun register(name: String, email: String, password: String, onSuccess: (FirebaseUser) -> Unit, onError: (String) -> Unit) {
+        if (_uiState.value.isLoading) return
+
+        if (name.isBlank() || email.isBlank() || password.isBlank()) {
             _uiState.value = AuthUiState(error = "Veuillez remplir tous les champs.")
             return
         }
 
         _uiState.value = AuthUiState(isLoading = true)
         viewModelScope.launch {
-            when (val result = AuthRepository.register(email, password)) {
+            val result = AuthRepository.register(email, password)
+            when (result) {
                 is AuthResult.Success -> {
-                    _uiState.value = AuthUiState(isSuccess = true)
-                    onSuccess(result.user)
+                    val profileCreated = AuthRepository.createUserProfile(result.user.uid, name, email)
+                    if (profileCreated) {
+                        _uiState.value = AuthUiState(isSuccess = true)
+                        onSuccess(result.user)
+                    } else {
+                        _uiState.value = AuthUiState(error = "Erreur lors de la création du profil.")
+                        onError("Erreur lors de la création du profil.")
+                    }
                 }
                 is AuthResult.Error -> {
                     _uiState.value = AuthUiState(error = result.message)

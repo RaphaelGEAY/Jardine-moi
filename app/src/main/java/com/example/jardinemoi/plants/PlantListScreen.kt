@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -35,6 +36,12 @@ fun PlantListScreen(
     val plants by viewModel.plants.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val completedPlantIds by viewModel.completedPlantIds.collectAsState()
+
+    // Refresh les plantes complétées à chaque fois qu'on arrive sur cet écran
+    LaunchedEffect(Unit) {
+        viewModel.refreshCompletedPlants()
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TextField(
@@ -73,6 +80,7 @@ fun PlantListScreen(
                 items(plants) { plant ->
                     PlantListItem(
                         plant = plant,
+                        isCompleted = completedPlantIds.contains(plant.id),
                         onClick = { onPlantClick(plant) }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -85,6 +93,7 @@ fun PlantListScreen(
 @Composable
 fun PlantListItem(
     plant: PlantInfo,
+    isCompleted: Boolean = false,
     onClick: () -> Unit
 ) {
     Card(
@@ -105,25 +114,36 @@ fun PlantListItem(
                     .clip(RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = plant.imageUrl,
-                    contentDescription = plant.commonName,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(8.dp),
-                    contentScale = ContentScale.Crop,
-                    colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
-                    alpha = 0.5f // Réduit l'opacité pour cacher encore plus
-                )
-                // Grand point d'interrogation
-                Text(
-                    text = "?",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 40.sp
-                    ),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                )
+                if (isCompleted) {
+                    // 🌟 Plante complétée : Affichage de l'image originale
+                    AsyncImage(
+                        model = plant.imageUrl,
+                        contentDescription = plant.commonName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // ❓ Plante non complétée : Affichage grisé avec point d'interrogation
+                    AsyncImage(
+                        model = plant.imageUrl,
+                        contentDescription = plant.commonName,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .blur(8.dp),
+                        contentScale = ContentScale.Crop,
+                        colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
+                        alpha = 0.5f // Réduit l'opacité pour cacher encore plus
+                    )
+                    // Grand point d'interrogation
+                    Text(
+                        text = "?",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 40.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {

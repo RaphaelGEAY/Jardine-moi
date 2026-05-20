@@ -179,8 +179,8 @@ internal fun GardenSlot.advance(weather: Weather, elapsedSeconds: Long = 1L): Ga
         nextStarvation = 0L
     }
 
-    // Si la plante n'a plus d'eau depuis 30 secondes, elle meurt
-    if (nextStarvation >= 30) {
+    // Si la plante n'a plus d'eau depuis 5 minutes (300s), elle meurt
+    if (nextStarvation >= 300) {
         return clearToSoil()
     }
 
@@ -194,6 +194,14 @@ internal fun GardenSlot.advance(weather: Weather, elapsedSeconds: Long = 1L): Ga
     val growthAmount = (elapsedSeconds * growthSpeed).toLong()
     
     val nextProgress = (progress + growthAmount).coerceAtMost(plant.growthSeconds)
+
+    // On ne retourne un nouvel objet QUE si une valeur a réellement changé
+    if (nextProgress == progress && 
+        nextWater == water && 
+        nextFertilizer == fertilizer && 
+        nextStarvation == starvationSeconds) {
+        return this
+    }
 
     return copy(
         progress = nextProgress,

@@ -14,12 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -32,7 +30,6 @@ import com.example.jardinemoi.auth.LoginScreen
 import com.example.jardinemoi.auth.RegisterScreen
 import com.example.jardinemoi.game.GardenGameScreen
 import com.example.jardinemoi.game.rememberGardenGameState
-import com.google.firebase.firestore.FirebaseFirestore
 import com.example.jardinemoi.home.HomeScreen
 import com.example.jardinemoi.messaging.ui.ChatScreen
 import com.example.jardinemoi.messaging.ui.ConversationListScreen
@@ -68,15 +65,21 @@ fun GlobalAppRoot() {
     val gardenGameState = rememberGardenGameState(userId = userId)
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // 🔥 Navigation automatique selon l'état Firebase
+    // 🔥 Navigation automatique uniquement lors du CHANGEMENT d'état d'authentification
     LaunchedEffect(isAuthenticated) {
-        if (isAuthenticated) {
+        val currentDest = navController.currentDestination
+        val isInMainGraph = currentDest?.hierarchy?.any { it.route == "main" } == true
+        val isInAuthGraph = currentDest?.hierarchy?.any { it.route == "auth" } == true
+
+        if (isAuthenticated && !isInMainGraph) {
+            // On ne redirige vers "main" QUE si on n'y est pas déjà
             navController.navigate("main") {
-                popUpTo(0)
+                popUpTo(0) { inclusive = true }
             }
-        } else {
+        } else if (!isAuthenticated && !isInAuthGraph) {
+            // On ne redirige vers "auth" QUE si on n'y est pas déjà
             navController.navigate("auth") {
-                popUpTo(0)
+                popUpTo(0) { inclusive = true }
             }
         }
     }
@@ -110,8 +113,12 @@ fun GlobalAppRoot() {
 
     Scaffold(
         bottomBar = {
-            // On n'affiche la barre que si on est dans le graphe "main" (utilisateur connecté)
-            if (isAuthenticated && currentDestination?.hierarchy?.any { it.route == "main" || it.route == "home" || it.route == "game" || it.route == "messages" || it.route == "account" } == true) {
+            // On n'affiche la barre que si on est dans le graphe "main"
+            val showBottomBar = isAuthenticated && currentDestination?.hierarchy?.any { 
+                it.route == "home" || it.route == "game" || it.route == "messages" || it.route == "account" 
+            } == true
+            
+            if (showBottomBar) {
                 NavigationBar {
                     items.forEach { (route, label, icon) ->
                         NavigationBarItem(
@@ -120,7 +127,6 @@ fun GlobalAppRoot() {
                             selected = currentDestination.hierarchy.any { it.route == route },
                             onClick = {
                                 navController.navigate(route) {
-                                    // Évite d'empiler les pages
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
@@ -157,24 +163,10 @@ fun GlobalAppRoot() {
                 composable("register") {
                     RegisterScreen(
                         viewModel = viewModel,
-                        onRegisterSuccess = { user, name, email ->
-                            val uid = user.uid
-                            val firestore = FirebaseFirestore.getInstance()
-
-                            val userData = mapOf(
-                                "name" to name,
-                                "email" to email,
-                                "createdAt" to System.currentTimeMillis()
-                            )
-
-                            firestore.collection("users")
-                                .document(uid)
-                                .set(userData)
-                                .addOnSuccessListener {
-                                    navController.navigate("main") {
-                                        popUpTo(0)
-                                    }
-                                }
+                        onRegisterSuccess = { _, _, _ ->
+                            navController.navigate("main") {
+                                popUpTo(0)
+                            }
                         },
                         onBack = { navController.popBackStack() }
                     )
@@ -202,8 +194,10 @@ fun GlobalAppRoot() {
                 }
 
                 composable("chat/{conversationId}") { backStackEntry ->
-                    val id = backStackEntry.arguments?.getString("conversationId")!!
-                    ChatScreen(conversationId = id)
+                    val id = backStackEntry.arguments?.getString("conversationId")
+                    if (id != null) {
+                        ChatScreen(conversationId = id)
+                    }
                 }
 
                 composable("newMessage") {
@@ -214,7 +208,12 @@ fun GlobalAppRoot() {
                     AccountScreen(
                         viewModel = viewModel,
                         gameState = gardenGameState,
-                        onLogout = viewModel::logout
+                        onLogout = {
+                            viewModel.logout()
+                            navController.navigate("login") {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
+                        }
                     )
                 }
 
@@ -236,7 +235,12 @@ fun GlobalAppRoot() {
                     arguments = listOf(navArgument("plantId") { type = NavType.StringType })
                 ) { backStackEntry ->
 
-                    val plantId = backStackEntry.arguments?.getString("plantId")!!
+                    val plantId = backStackEntry.arguments?.getString("plantId")
+                    if (plantId == null) {
+                        LaunchedEffect(Unit) { navController.popBackStack() }
+                        return@composable
+                    }
+                    
                     val detailViewModel: PlantDetailViewModel = viewModel()
                     val homeViewModel: com.example.jardinemoi.home.HomeViewModel = viewModel()
 
@@ -244,7 +248,7 @@ fun GlobalAppRoot() {
                     val extractedColors by detailViewModel.extractedColors.collectAsState()
                     val myPlants by homeViewModel.myPlants.collectAsState()
                     val isOwned = remember(myPlants, plantId) { myPlants.any { it.id == plantId } }
-                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val context = LocalContext.current
 
                     LaunchedEffect(plantId, isOwned) {
                         detailViewModel.loadPlant(plantId, isOwned, context)
@@ -278,7 +282,7 @@ fun GlobalAppRoot() {
                         )
                     } else {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Chargement…")
+                            CircularProgressIndicator()
                         }
                     }
                 }

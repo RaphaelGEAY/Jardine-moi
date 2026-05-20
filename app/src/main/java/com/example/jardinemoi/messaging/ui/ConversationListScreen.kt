@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.Message
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.jardinemoi.messaging.MessagingViewModel
@@ -28,12 +28,14 @@ import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun ConversationListScreen(nav: NavController, vm: MessagingViewModel = viewModel()) {
-    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val conversations by vm.conversations.collectAsState()
-    val forums by vm.forums.collectAsState()
+    val uid = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
+    val conversations by vm.conversations.collectAsStateWithLifecycle()
+    val forums by vm.forums.collectAsStateWithLifecycle()
 
     LaunchedEffect(uid) {
-        vm.loadConversations(uid)
+        if (uid.isNotBlank()) {
+            vm.loadConversations(uid)
+        }
     }
 
     Scaffold(
@@ -65,7 +67,7 @@ fun ConversationListScreen(nav: NavController, vm: MessagingViewModel = viewMode
                 )
             }
 
-            items(forums) { (id, forum) ->
+            items(forums, key = { it.first }) { (id, forum) ->
                 ConversationItem(
                     conversation = forum,
                     isForum = true,
@@ -95,7 +97,7 @@ fun ConversationListScreen(nav: NavController, vm: MessagingViewModel = viewMode
                     )
                 }
             } else {
-                items(conversations) { (id, conv) ->
+                items(conversations, key = { it.first }) { (id, conv) ->
                     ConversationItem(
                         conversation = conv,
                         onClick = { nav.navigate("chat/$id") }
@@ -140,7 +142,7 @@ fun ConversationItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isForum) Icons.Default.Forum else Icons.Default.Message,
+                    imageVector = if (isForum) Icons.Default.Forum else Icons.AutoMirrored.Filled.Message,
                     contentDescription = null,
                     tint = if (isForum) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )

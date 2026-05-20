@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.example.jardinemoi.auth.AuthRepository
 import com.example.jardinemoi.auth.AuthViewModel
 import com.example.jardinemoi.game.GardenGameState
+import kotlinx.coroutines.tasks.await
+
 
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,6 +39,21 @@ fun AccountScreen(
     val repository = remember { PlantRepository() }
     val lifetimeCount by repository.getLifetimePlantsCount().collectAsState(initial = 0)
     val totalCarePoints by repository.getTotalCarePoints().collectAsState(initial = 0)
+    
+    // État pour stocker le nom d'utilisateur
+    val userName = remember { mutableStateOf<String?>(null) }
+    
+    // Charger le nom d'utilisateur depuis Firestore
+    androidx.compose.runtime.LaunchedEffect(user?.uid) {
+        user?.uid?.let { uid ->
+            val snapshot = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(uid)
+                .get()
+                .await()
+            userName.value = snapshot.getString("name")
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -55,8 +72,9 @@ fun AccountScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = user?.email ?: "Utilisateur inconnu",
-            style = MaterialTheme.typography.titleLarge
+            text = userName.value ?: user?.email ?: "Utilisateur inconnu",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(24.dp))
