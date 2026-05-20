@@ -210,7 +210,12 @@ fun GlobalAppRoot() {
                     AccountScreen(
                         viewModel = viewModel,
                         gameState = gardenGameState,
-                        onLogout = viewModel::logout
+                        onLogout = {
+                            viewModel.logout()
+                            navController.navigate("login") {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
+                        }
                     )
                 }
 
