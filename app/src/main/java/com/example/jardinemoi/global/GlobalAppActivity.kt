@@ -15,9 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -33,7 +30,6 @@ import com.example.jardinemoi.auth.LoginScreen
 import com.example.jardinemoi.auth.RegisterScreen
 import com.example.jardinemoi.game.GardenGameScreen
 import com.example.jardinemoi.game.rememberGardenGameState
-import com.google.firebase.firestore.FirebaseFirestore
 import com.example.jardinemoi.home.HomeScreen
 import com.example.jardinemoi.messaging.ui.ChatScreen
 import com.example.jardinemoi.messaging.ui.ConversationListScreen
@@ -62,7 +58,6 @@ class GlobalAppActivity : ComponentActivity() {
 fun GlobalAppRoot() {
     val navController = rememberNavController()
     val viewModel: AuthViewModel = viewModel()
-    val messagingViewModel: com.example.jardinemoi.messaging.MessagingViewModel = viewModel()
 
     // 🔥 Navigation pilotée par Firebase
     val isAuthenticated by viewModel.isAuthenticated.collectAsState()
@@ -118,8 +113,12 @@ fun GlobalAppRoot() {
 
     Scaffold(
         bottomBar = {
-            // On n'affiche la barre que si on est dans le graphe "main" (utilisateur connecté)
-            if (isAuthenticated && currentDestination?.hierarchy?.any { it.route == "main" || it.route == "home" || it.route == "game" || it.route == "messages" || it.route == "account" } == true) {
+            // On n'affiche la barre que si on est dans le graphe "main"
+            val showBottomBar = isAuthenticated && currentDestination?.hierarchy?.any { 
+                it.route == "home" || it.route == "game" || it.route == "messages" || it.route == "account" 
+            } == true
+            
+            if (showBottomBar) {
                 NavigationBar {
                     items.forEach { (route, label, icon) ->
                         NavigationBarItem(
@@ -128,7 +127,6 @@ fun GlobalAppRoot() {
                             selected = currentDestination.hierarchy.any { it.route == route },
                             onClick = {
                                 navController.navigate(route) {
-                                    // Évite d'empiler les pages
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
