@@ -23,7 +23,8 @@ data class PlantInfo(
     @get:PropertyName("plantedAt") @set:PropertyName("plantedAt") var plantedAt: Long = System.currentTimeMillis(),
     @get:PropertyName("lastWateredDate") @set:PropertyName("lastWateredDate") var lastWateredDate: Long = System.currentTimeMillis(),
     @get:PropertyName("healthLevel") @set:PropertyName("healthLevel") var healthLevel: Int = 100,
-    @get:PropertyName("carePoints") @set:PropertyName("carePoints") var carePoints: Int = 0
+    @get:PropertyName("carePoints") @set:PropertyName("carePoints") var carePoints: Int = 0,
+    @get:PropertyName("completed") @set:PropertyName("completed") var completed: Boolean = false
 ) {
     // Fallback pour une éventuelle erreur de frappe dans la DB (espace à la fin)
     @get:PropertyName("wateringFrequencyDays ") @set:PropertyName("wateringFrequencyDays ")

@@ -316,6 +316,31 @@ class PlantRepository {
         if (plantId.isEmpty()) return@withContext Result.failure(Exception("ID de plante invalide"))
 
         try {
+            // Vérifier si la plante est complétée avant de la supprimer
+            val plantDoc = firestore.collection("users")
+                .document(userId)
+                .collection("my_plants")
+                .document(plantId)
+                .get()
+                .await()
+
+            val plant = plantDoc.toObject(PlantInfo::class.java)
+
+            // Si la plante est complétée (Mature) ou au stade Mature, l'ajouter à la collection "completed_plants"
+            if (plant != null && (plant.completed || plant.currentStage == "Mature")) {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("completed_plants")
+                    .document(plantId)
+                    .set(mapOf(
+                        "plantId" to plantId,
+                        "completedAt" to System.currentTimeMillis(),
+                        "commonName" to plant.commonName
+                    ))
+                    .await()
+            }
+
+            // Supprimer la plante de "my_plants"
             firestore.collection("users")
                 .document(userId)
                 .collection("my_plants")
@@ -336,6 +361,79 @@ class PlantRepository {
             val snapshot = colRef.get().await()
             for (doc in snapshot.documents) {
                 doc.reference.delete().await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // 🌟 Récupération en temps réel des plantes complétées (cultivées jusqu'au stade Mature)
+    fun getCompletedPlantIds(): Flow<Set<String>> = callbackFlow {
+        val userId = auth.currentUser?.uid
+
+        if (userId == null) {
+            // Utilisateur non connecté: émettre vide
+            trySend(emptySet())
+            close()
+            return@callbackFlow
+        }
+
+        var completedCollectionIds = emptySet<String>()
+        var matureMyPlantsIds = emptySet<String>()
+
+        fun emitCombined() {
+            trySend(completedCollectionIds + matureMyPlantsIds)
+        }
+
+        // Écouter la collection completed_plants pour cet utilisateur (anciennes plantes complétées supprimées)
+        val completedListener = firestore.collection("users")
+            .document(userId)
+            .collection("completed_plants")
+            .addSnapshotListener { snapshot, _ ->
+                completedCollectionIds = snapshot?.documents?.map { it.id }?.toSet() ?: emptySet()
+                emitCombined()
+            }
+
+        // Écouter la collection my_plants pour cet utilisateur (plantes en cours mais déjà matures/complétées)
+        val myPlantsListener = firestore.collection("users")
+            .document(userId)
+            .collection("my_plants")
+            .addSnapshotListener { snapshot, _ ->
+                matureMyPlantsIds = snapshot?.documents?.mapNotNull { doc ->
+                    val plant = doc.toObject(PlantInfo::class.java)?.copy(id = doc.id)
+                    if (plant != null && (plant.completed || plant.currentStage == "Mature")) {
+                        doc.id
+                    } else {
+                        null
+                    }
+                }?.toSet() ?: emptySet()
+                emitCombined()
+            }
+
+        awaitClose {
+            completedListener.remove()
+            myPlantsListener.remove()
+        }
+    }
+
+    // 🌟 Marquer une plante comme complétée (Mature)
+    suspend fun markPlantAsCompleted(plantId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val userId = auth.currentUser?.uid ?: return@withContext Result.failure(Exception("Utilisateur non connecté"))
+        if (plantId.isEmpty()) return@withContext Result.failure(Exception("ID de plante invalide"))
+
+        try {
+            val docRef = firestore.collection("users")
+                .document(userId)
+                .collection("my_plants")
+                .document(plantId)
+
+            val doc = docRef.get().await()
+            val plant = doc.toObject(PlantInfo::class.java) ?: return@withContext Result.failure(Exception("Plante introuvable"))
+
+            // Si la plante n'est pas déjà marquée comme complétée et qu'elle est Mature
+            if (!plant.completed && plant.currentStage == "Mature") {
+                docRef.update("completed", true).await()
             }
             Result.success(Unit)
         } catch (e: Exception) {

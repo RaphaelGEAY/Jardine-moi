@@ -130,6 +130,10 @@ class PlantDetailViewModel(
             val updatedPlant = repository.getMyPlantById(current.id)
             if (updatedPlant != null) {
                 _plant.value = updatedPlant
+                // Si la plante atteint Mature, la marquer comme complétée
+                if (updatedPlant.currentStage == "Mature") {
+                    repository.markPlantAsCompleted(current.id)
+                }
             }
         }
     }
@@ -142,6 +146,10 @@ class PlantDetailViewModel(
             val updated = repository.getMyPlantById(current.id)
             if (updated != null) {
                 _plant.value = updated
+                // Si la plante atteint Mature, la marquer comme complétée
+                if (updated.currentStage == "Mature") {
+                    repository.markPlantAsCompleted(current.id)
+                }
             }
         }
     }

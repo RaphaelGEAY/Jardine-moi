@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jardinemoi.data.model.PlantInfo
 import com.example.jardinemoi.data.repository.PlantRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +25,21 @@ class PlantListViewModel(
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching
 
+    private val _completedPlantIds = MutableStateFlow<Set<String>>(emptySet())
+    val completedPlantIds: StateFlow<Set<String>> = _completedPlantIds
+
     private var loadJob: Job? = null
     private var searchJob: Job? = null
+    private var completedPlantsJob: Job? = null
 
     init {
         loadFirestorePlants()
+        loadCompletedPlants()
+    }
+
+    // Fonction publique pour forcer un refresh des plantes complétées
+    fun refreshCompletedPlants() {
+        loadCompletedPlants()
     }
 
     private fun loadFirestorePlants() {
@@ -42,6 +53,16 @@ class PlantListViewModel(
             }
         }
     }
+
+    private fun loadCompletedPlants() {
+        completedPlantsJob?.cancel()
+        completedPlantsJob = viewModelScope.launch {
+            repository.getCompletedPlantIds().collectLatest { ids ->
+                _completedPlantIds.value = ids
+            }
+        }
+    }
+
 
     fun onSearchQueryChange(newQuery: String) {
         _searchQuery.value = newQuery
