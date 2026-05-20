@@ -41,6 +41,3 @@ Si vous préférez utiliser un terminal (VS Code, CMD, PowerShell) :
 *   **Erreur de synchronisation Gradle :** Vérifiez votre connexion internet (le premier lancement télécharge les dépendances).
 *   **Version du JDK :** Si Gradle échoue, vérifiez dans vos paramètres (Build, Execution, Deployment > Build Tools > Gradle) que le "Gradle JDK" est bien réglé sur la version 17 ou plus.
 *   **Firebase :** Assurez-vous que le fichier `google-services.json` est correctement placé dans le dossier `app/` pour que les fonctionnalités Firebase (Auth, Firestore) fonctionnent.
-
----
-*Développé avec ❤️ pour Jardine-moi.*
