@@ -180,7 +180,7 @@ fun GlobalAppRoot() {
 
                 composable("home") {
                     HomeScreen(
-                        authViewModel = viewModel,
+                        homeViewModel = viewModel(),
                         onAddPlant = { navController.navigate("plants") },
                         onPlantClick = { plant ->
                             navController.navigate("plantDetail/${plant.id}")
